@@ -1,0 +1,89 @@
+.ar-container {
+  margin-top: 48px;
+  text-align: center;
+  width: 100%;
+}
+
+.ar-title {
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text-main);
+  margin-bottom: 12px;
+}
+
+.ar-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-width: 650px;
+  margin: 0 auto 32px auto;
+}
+
+.ar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  width: 100%;
+  max-width: 850px;
+  margin: 0 auto;
+}
+
+.ar-card {
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-ios-card);
+  padding: 24px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.ar-card:hover {
+  background-color: var(--bg-active);
+}
+
+.ar-icon {
+  color: var(--text-main);
+}
+
+.ar-card-header {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.ar-card-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ==========================================
+   MOBILE RESPONSIVENESS (max-width: 600px)
+   ========================================== */
+@media (max-width: 600px) {
+  .ar-container {
+    margin-top: 32px;
+  }
+
+  .ar-title {
+    font-size: 20px;
+  }
+
+  .ar-subtitle {
+    font-size: 13px;
+    margin-bottom: 20px;
+    padding: 0 8px;
+  }
+
+  .ar-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .ar-card {
+    padding: 20px;
+    border-radius: 16px;
+  }
+}

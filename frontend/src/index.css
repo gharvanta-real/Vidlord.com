@@ -1,0 +1,141 @@
+/* ==========================================
+   LAYER 1: PRIMITIVE TOKENS (Base Values)
+   ========================================== */
+:root {
+  --color-pure-black: #000000;
+  --color-pure-white: #ffffff;
+  
+  /* Neutral greys (Apple scale) */
+  --color-grey-50: #f5f5f7;
+  --color-grey-100: #e8e8ed;
+  --color-grey-200: #d2d2d7;
+  --color-grey-300: #86868b;
+  --color-grey-850: #1c1c1e;
+  --color-grey-900: #121214;
+  --color-grey-950: #0a0a0c;
+
+  /* Spacing */
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 20px;
+  --space-lg: 32px;
+  --space-xl: 48px;
+  
+  /* Radius */
+  --radius-ios-btn: 14px;
+  --radius-ios-card: 24px;
+  --radius-ios-input: 18px;
+}
+
+/* ==========================================
+   LAYER 2: SEMANTIC TOKENS (Light/Dark theme mappings)
+   ========================================== */
+[data-theme="dark"] {
+  --bg-page: #2a2a2a;
+  --bg-page-grad: #2a2a2a;
+  --bg-surface: #333333;
+  --bg-input: #3c3c3c;
+  --bg-active: #4a4a4a;
+  
+  --text-main: var(--color-pure-white);
+  --text-muted: var(--color-grey-300);
+  --text-dim: var(--color-grey-200);
+  
+  --accent-color: var(--color-pure-white);
+  --accent-contrast: var(--color-pure-black);
+}
+
+[data-theme="light"] {
+  --bg-page: var(--color-pure-white);
+  --bg-page-grad: var(--color-pure-white);
+  --bg-surface: var(--color-grey-50);
+  --bg-input: var(--color-grey-100);
+  --bg-active: var(--color-grey-200);
+  
+  --text-main: var(--color-pure-black);
+  --text-muted: var(--color-grey-300);
+  --text-dim: var(--color-grey-800);
+  
+  --accent-color: var(--color-pure-black);
+  --accent-contrast: var(--color-pure-white);
+}
+
+/* ==========================================
+   LAYER 3: COMPONENT TOKENS (Scoped CSS variables)
+   ========================================== */
+:root {
+  --nav-bg: var(--bg-page);
+  --input-bg: var(--bg-input);
+  --card-bg: var(--bg-surface);
+  --btn-bg: var(--accent-color);
+  --btn-text: var(--accent-contrast);
+  --slider-bg: var(--bg-active);
+  --slider-fill: var(--accent-color);
+}
+
+/* ==========================================
+   GLOBAL RESET & BASE STYLES
+   ========================================== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--bg-page-grad);
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+button, input, select {
+  font-family: inherit;
+  font-size: inherit;
+  border: none;
+  outline: none;
+}
+
+/* General Layout utilities */
+.container {
+  width: 100%;
+  max-width: 1000px; /* Expand to 1000px for a wider layout on desktop */
+  margin: 0 auto;
+  padding: var(--space-lg) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+/* Animations */
+@keyframes slide-right {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-slide {
+  animation: slide-right 1.5s infinite linear;
+}
+
+/* ==========================================
+   MOBILE RESPONSIVENESS (max-width: 600px)
+   ========================================== */
+@media (max-width: 600px) {
+  .container {
+    padding: var(--space-md) var(--space-sm);
+  }
+}
+

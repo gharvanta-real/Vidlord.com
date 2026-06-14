@@ -1,0 +1,97 @@
+.steps-container {
+  margin-top: 24px;
+  text-align: center;
+  width: 100%;
+}
+
+.steps-title {
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text-main);
+  margin-bottom: 24px;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+.step-card {
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-ios-card);
+  padding: 24px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.step-num {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--bg-input); /* Subtle grey index number background */
+  line-height: 1;
+}
+
+.step-icon {
+  color: var(--text-main);
+}
+
+.step-header {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.step-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ==========================================
+   MOBILE RESPONSIVENESS (max-width: 600px)
+   ========================================== */
+@media (max-width: 600px) {
+  .steps-container {
+    margin-top: 16px;
+  }
+
+  .steps-title {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+
+  .steps-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .step-card {
+    padding: 20px;
+    border-radius: 16px;
+    gap: 8px;
+  }
+
+  .step-num {
+    font-size: 24px;
+    top: 12px;
+    right: 16px;
+  }
+
+  .step-header {
+    font-size: 15px;
+  }
+
+  .step-text {
+    font-size: 12px;
+  }
+}
+
