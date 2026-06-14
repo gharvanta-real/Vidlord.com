@@ -15,7 +15,8 @@ pub struct HlsDownloader {
 impl HlsDownloader {
     pub fn new(concurrency: usize) -> Self {
         let client = Client::builder()
-            .timeout(Duration::from_secs(12))
+            .connect_timeout(Duration::from_secs(15))
+            .timeout(Duration::from_secs(60))
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             .danger_accept_invalid_certs(true)
             .build()
@@ -97,13 +98,37 @@ impl Downloader for HlsDownloader {
             let client = client.clone();
             let referer_clone = referer_clone.clone();
             async move {
-                let mut builder = client.get(&url);
-                if let Some(ref ref_str) = referer_clone {
-                    builder = builder.header(reqwest::header::REFERER, ref_str);
+                let mut retries = 5;
+                let mut delay = Duration::from_secs(1);
+                loop {
+                    let mut builder = client.get(&url);
+                    if let Some(ref ref_str) = referer_clone {
+                        builder = builder.header(reqwest::header::REFERER, ref_str);
+                    }
+                    let res = match builder.send().await {
+                        Ok(resp) => {
+                            if resp.status().is_success() {
+                                resp.bytes().await
+                            } else {
+                                Err(resp.error_for_status().unwrap_err())
+                            }
+                        }
+                        Err(e) => Err(e),
+                    };
+
+                    match res {
+                        Ok(bytes) => return Ok::<_, reqwest::Error>((idx, bytes)),
+                        Err(e) => {
+                            retries -= 1;
+                            if retries == 0 {
+                                return Err(e);
+                            }
+                            eprintln!("Segment {} download failed: {}. Retrying in {:?}... ({} retries left)", idx, e, delay, retries);
+                            tokio::time::sleep(delay).await;
+                            delay *= 2;
+                        }
+                    }
                 }
-                let bytes = builder.send().await?
-                    .bytes().await?;
-                Ok::<_, reqwest::Error>((idx, bytes))
             }
         });
 
@@ -113,6 +138,7 @@ impl Downloader for HlsDownloader {
         let mut file = File::create(output_path)?;
         let mut buffered_segments = BTreeMap::new();
         let mut next_write_idx = 0;
+        let mut total_downloaded_bytes = 0u64;
 
         // 4. Download and stitch segments in-order
         while let Some(res) = stream.next().await {
@@ -123,9 +149,14 @@ impl Downloader for HlsDownloader {
 
             // Write contiguous segments that have arrived
             while let Some(bytes) = buffered_segments.remove(&next_write_idx) {
+                let bytes_len = bytes.len();
                 file.write_all(&bytes)?;
                 next_write_idx += 1;
-                progress_callback(next_write_idx as f64, total_segments as f64);
+                total_downloaded_bytes += bytes_len as u64;
+
+                let avg_segment_size = total_downloaded_bytes as f64 / next_write_idx as f64;
+                let estimated_total_bytes = avg_segment_size * total_segments as f64;
+                progress_callback(total_downloaded_bytes as f64, estimated_total_bytes);
             }
         }
 

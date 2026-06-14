@@ -72,7 +72,7 @@ where
     F: Fn(f64, f64) + Send + Sync + 'static,
 {
     if url.contains(".m3u8") || url.contains("m3u8") {
-        let downloader = hls::HlsDownloader::new(12);
+        let downloader = hls::HlsDownloader::new(8);
         downloader.download(url, output_path, progress_callback).await
     } else {
         let downloader = http::HttpDownloader::new();
