@@ -191,9 +191,41 @@ async fn handle_proxy(
     Ok((response_status, headers, response_bytes))
 }
 
+fn spawn_cleanup_task() {
+    tokio::spawn(async {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            if let Ok(entries) = std::fs::read_dir("./downloads") {
+                for entry in entries.flatten() {
+                    if let Ok(metadata) = entry.metadata() {
+                        if metadata.is_file() {
+                            if let Ok(modified) = metadata.modified() {
+                                if let Ok(elapsed) = modified.elapsed() {
+                                    if elapsed.as_secs() > 600 { // 10 minutes
+                                        let path = entry.path();
+                                        if let Err(e) = std::fs::remove_file(&path) {
+                                            eprintln!("Failed to auto-delete expired download file {:?}: {}", path, e);
+                                        } else {
+                                            println!("Auto-deleted expired download file: {:?}", path);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
 pub async fn run_server(port: u16) -> Result<(), Box<dyn std::error::Error>> {
     // Ensure downloads directory exists
     let _ = std::fs::create_dir_all("./downloads");
+
+    // Start background cleanup task for expired downloads
+    spawn_cleanup_task();
 
     use tower_http::services::ServeDir;
 

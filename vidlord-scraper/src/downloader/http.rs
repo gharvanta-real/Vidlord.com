@@ -100,6 +100,9 @@ impl Downloader for HttpDownloader {
 
         // 2. Perform segmented concurrent download if supported and size is large enough
         if accept_ranges && num_chunks > 1 {
+            if content_length > 3 * 1024 * 1024 * 1024 {
+                return Err(ScraperError::DownloadError("Video size exceeds 3 GB limit".to_string()));
+            }
             let chunk_size = content_length / num_chunks;
             let mut tasks = Vec::new();
             let downloaded_bytes = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
@@ -256,6 +259,9 @@ impl Downloader for HttpDownloader {
             }
 
             let total_size = resp.content_length().unwrap_or(0) as f64;
+            if total_size > 3.0 * 1024.0 * 1024.0 * 1024.0 {
+                return Err(ScraperError::DownloadError("Video size exceeds 3 GB limit".to_string()));
+            }
             let mut file = File::create(output_path)
                 .map_err(|e| ScraperError::IoError(e))?;
             
@@ -267,6 +273,10 @@ impl Downloader for HttpDownloader {
                 file.write_all(&chunk)
                     .map_err(|e| ScraperError::IoError(e))?;
                 downloaded += chunk.len() as f64;
+                
+                if downloaded > 3.0 * 1024.0 * 1024.0 * 1024.0 {
+                    return Err(ScraperError::DownloadError("Video size exceeds 3 GB limit".to_string()));
+                }
                 
                 if total_size > 0.0 {
                     progress_callback(downloaded, total_size);

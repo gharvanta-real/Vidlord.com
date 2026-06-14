@@ -154,6 +154,10 @@ impl Downloader for HlsDownloader {
                 next_write_idx += 1;
                 total_downloaded_bytes += bytes_len as u64;
 
+                if total_downloaded_bytes > 3 * 1024 * 1024 * 1024 {
+                    return Err(ScraperError::DownloadError("Video size exceeds 3 GB limit".to_string()));
+                }
+
                 let avg_segment_size = total_downloaded_bytes as f64 / next_write_idx as f64;
                 let estimated_total_bytes = avg_segment_size * total_segments as f64;
                 progress_callback(total_downloaded_bytes as f64, estimated_total_bytes);
