@@ -18,6 +18,7 @@ tokio-stream = { version = "0.1", features = ["sync"] }
 crossterm = "0.27"
 mp4 = "0.14"
 urlencoding = "2.1"
+chrono = "0.4"
 
 [dev-dependencies]
 tempfile = "3.10"

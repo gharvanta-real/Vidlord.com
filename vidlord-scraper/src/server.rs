@@ -111,7 +111,40 @@ async fn handle_extract(
     }
 }
 
+fn log_audit_event(
+    event_type: &str,
+    url: &str,
+    file_name: &str,
+    error: Option<&str>,
+    client_ip: &str,
+) {
+    let log_file_path = "./downloads_audit.jsonl";
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    
+    let log_entry = serde_json::json!({
+        "timestamp": timestamp,
+        "event": event_type,
+        "url": url,
+        "filename": file_name,
+        "client_ip": client_ip,
+        "error": error,
+    });
+    
+    let log_line = format!("{}\n", log_entry.to_string());
+    
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(true)
+        .open(log_file_path)
+    {
+        use std::io::Write;
+        let _ = file.write_all(log_line.as_bytes());
+    }
+}
+
 async fn handle_download(
+    headers: HeaderMap,
     Query(query): Query<DownloadQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     if !is_safe_url(&query.url).await {
@@ -137,7 +170,19 @@ async fn handle_download(
         .to_string();
     let safe_output_path = format!("./downloads/{}", file_name);
 
+    let client_ip = headers.get("x-real-ip")
+        .or_else(|| headers.get("x-forwarded-for"))
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("unknown")
+        .to_string();
+
+    log_audit_event("started", &query.url, &file_name, None, &client_ip);
+
     let (tx, rx) = mpsc::channel(100);
+
+    let url_clone = query.url.clone();
+    let file_name_clone = file_name.clone();
+    let client_ip_clone = client_ip.clone();
 
     // Spawn download asynchronously in the background
     tokio::spawn(async move {
@@ -173,10 +218,13 @@ async fn handle_download(
         let audio_url_ref = query.audio_url.as_deref();
         match download_stream(&query.url, audio_url_ref, &safe_output_path, progress_cb).await {
             Ok(()) => {
+                log_audit_event("completed", &url_clone, &file_name_clone, None, &client_ip_clone);
                 let _ = tx.send(ProgressMessage::Completed).await;
             }
             Err(e) => {
-                let _ = tx.send(ProgressMessage::Error { message: e.to_string() }).await;
+                let err_str = e.to_string();
+                log_audit_event("failed", &url_clone, &file_name_clone, Some(&err_str), &client_ip_clone);
+                let _ = tx.send(ProgressMessage::Error { message: err_str }).await;
             }
         }
     });
