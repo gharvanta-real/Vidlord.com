@@ -11,7 +11,7 @@ export default function Footer({ theme, onOpenPrivacy, onOpenTerms }) {
           <img 
             src={theme === "light" ? "/logo-light.png" : "/logo-dark.png"} 
             alt="Logo" 
-            style={{ height: "32px", width: "auto", objectFit: "contain" }} 
+            style={{ height: "35px", width: "auto", objectFit: "contain" }} 
           />
           <span className="footer-desc">High-speed video downloader engine</span>
         </div>
