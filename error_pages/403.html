@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>403 - Access Denied | Vidlord</title>
+  <style>
+    :root {
+      --bg-page: #0a0a0c;
+      --bg-surface: #121214;
+      --bg-active: #1c1c1e;
+      --text-main: #ffffff;
+      --text-muted: #86868b;
+      --accent-color: #ff3b30;
+      --accent-glow: rgba(255, 59, 48, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      justify-content: space-between;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .navbar {
+      height: 64px;
+      background-color: var(--bg-page);
+      width: 100%;
+      border-bottom: 1px solid #1c1c1e;
+    }
+
+    .navbar-container {
+      height: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px;
+    }
+
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .navbar-brand-logo {
+      height: 35px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .content-container {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 24px;
+    }
+
+    .error-card {
+      background-color: var(--bg-surface);
+      border: 1px solid #1c1c1e;
+      border-radius: 24px;
+      padding: 40px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .error-card::before {
+      content: "";
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(135deg, var(--accent-color), transparent 60%);
+      z-index: -1;
+      border-radius: 26px;
+      opacity: 0.3;
+    }
+
+    .error-icon {
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .shield-pulse {
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); filter: drop-shadow(0 0 0px var(--accent-glow)); }
+      50% { transform: scale(1.05); filter: drop-shadow(0 0 8px var(--accent-glow)); }
+      100% { transform: scale(1); filter: drop-shadow(0 0 0px var(--accent-glow)); }
+    }
+
+    .status-code {
+      font-family: "SF Mono", SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 14px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--accent-color);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .error-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      letter-spacing: -0.5px;
+    }
+
+    .error-desc {
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--text-main);
+      color: var(--bg-page);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      padding: 12px 24px;
+      border-radius: 14px;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      cursor: pointer;
+      border: none;
+    }
+
+    .action-btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .action-btn:active {
+      transform: translateY(0);
+    }
+
+    .footer {
+      padding: 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      border-top: 1px solid #1c1c1e;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <a href="/" class="navbar-brand">
+        <img src="/logo-dark.png" alt="Vidlord Logo" class="navbar-brand-logo">
+      </a>
+    </div>
+  </nav>
+
+  <main class="content-container">
+    <div class="error-card">
+      <div class="error-icon">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="shield-pulse">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <rect x="9" y="11" width="6" height="5" rx="1" />
+          <path d="M10 11V9a2 2 0 0 1 4 0v2" />
+        </svg>
+      </div>
+      <p class="status-code">403: ACCESS_DENIED</p>
+      <h1 class="error-title">Access Denied</h1>
+      <p class="error-desc">Unauthorized request payload signature detected. Access to this network node has been rejected by server configurations.</p>
+      <a href="/" class="action-btn">Return Home</a>
+    </div>
+  </main>
+
+  <footer class="footer">
+    &copy; 2026 Vidlord. All Rights Reserved.
+  </footer>
+</body>
+</html>
