@@ -3,6 +3,23 @@ import React, { useEffect, useRef, useState } from "react";
 export default function VideoPlayer({ url, poster }) {
   const videoRef = useRef(null);
   const [loadError, setLoadError] = useState(false);
+  const [posterUrl, setPosterUrl] = useState(poster);
+
+  useEffect(() => {
+    setPosterUrl(poster);
+    if (poster && poster.includes("maxresdefault.jpg")) {
+      const img = new Image();
+      img.onload = () => {
+        if (img.naturalWidth === 120) {
+          setPosterUrl(poster.replace("maxresdefault.jpg", "hqdefault.jpg"));
+        }
+      };
+      img.onerror = () => {
+        setPosterUrl(poster.replace("maxresdefault.jpg", "hqdefault.jpg"));
+      };
+      img.src = poster;
+    }
+  }, [poster]);
 
   useEffect(() => {
     let hls = null;
@@ -106,7 +123,7 @@ export default function VideoPlayer({ url, poster }) {
         <video
           ref={videoRef}
           playsInline
-          poster={poster}
+          poster={posterUrl}
           style={styles.video}
         />
       )}

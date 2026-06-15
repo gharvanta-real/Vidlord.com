@@ -44,9 +44,64 @@ pub enum ProgressMessage {
     },
 }
 
+async fn is_safe_url(url_str: &str) -> bool {
+    let parsed = match reqwest::Url::parse(url_str) {
+        Ok(url) => url,
+        Err(_) => return false,
+    };
+    
+    let scheme = parsed.scheme();
+    if scheme != "http" && scheme != "https" {
+        return false;
+    }
+
+    let host = match parsed.host_str() {
+        Some(h) => h,
+        None => return false,
+    };
+
+    let port = parsed.port().unwrap_or(if scheme == "https" { 443 } else { 80 });
+    let addr_str = format!("{}:{}", host, port);
+
+    let mut addrs = match tokio::net::lookup_host(&addr_str).await {
+        Ok(a) => a,
+        Err(_) => return false,
+    };
+
+    while let Some(addr) = addrs.next() {
+        let ip = addr.ip();
+        if ip.is_loopback() || ip.is_unspecified() {
+            return false;
+        }
+        if let std::net::IpAddr::V4(ipv4) = ip {
+            if ipv4.is_private() || ipv4.is_link_local() || ipv4.is_broadcast() {
+                return false;
+            }
+        } else if let std::net::IpAddr::V6(ipv6) = ip {
+            let octets = ipv6.octets();
+            // fc00::/7 (unique local address)
+            if (octets[0] & 0xfe) == 0xfc {
+                return false;
+            }
+            // fe80::/10 (link-local)
+            if octets[0] == 0xfe && (octets[1] & 0xc0) == 0x80 {
+                return false;
+            }
+        }
+    }
+    true
+}
+
 async fn handle_extract(
     Json(payload): Json<ExtractRequest>,
 ) -> Result<Json<crate::extractor::ExtractionResult>, (axum::http::StatusCode, String)> {
+    if !is_safe_url(&payload.url).await {
+        return Err((
+            axum::http::StatusCode::BAD_REQUEST,
+            "URL is unsafe or resolves to a private/loopback address".to_string(),
+        ));
+    }
+
     match extract_video_details(&payload.url).await {
         Ok(result) => Ok(Json(result)),
         Err(e) => Err((
@@ -58,7 +113,30 @@ async fn handle_extract(
 
 async fn handle_download(
     Query(query): Query<DownloadQuery>,
-) -> Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>> {
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    if !is_safe_url(&query.url).await {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Video URL is unsafe or resolves to a private/loopback address".to_string(),
+        ));
+    }
+    if let Some(ref audio_url) = query.audio_url {
+        if !is_safe_url(audio_url).await {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "Audio URL is unsafe or resolves to a private/loopback address".to_string(),
+            ));
+        }
+    }
+
+    // Path Traversal mitigation: extract filename component only and prepend ./downloads/
+    let file_name = std::path::Path::new(&query.output_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("video.mp4")
+        .to_string();
+    let safe_output_path = format!("./downloads/{}", file_name);
+
     let (tx, rx) = mpsc::channel(100);
 
     // Spawn download asynchronously in the background
@@ -93,7 +171,7 @@ async fn handle_download(
         };
 
         let audio_url_ref = query.audio_url.as_deref();
-        match download_stream(&query.url, audio_url_ref, &query.output_path, progress_cb).await {
+        match download_stream(&query.url, audio_url_ref, &safe_output_path, progress_cb).await {
             Ok(()) => {
                 let _ = tx.send(ProgressMessage::Completed).await;
             }
@@ -105,10 +183,10 @@ async fn handle_download(
 
     let stream = ReceiverStream::new(rx).map(|msg| {
         let json_str = serde_json::to_string(&msg).unwrap_or_default();
-        Ok(Event::default().data(json_str))
+        Ok::<Event, Infallible>(Event::default().data(json_str))
     });
 
-    Sse::new(stream).keep_alive(KeepAlive::default())
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
 
 #[derive(Deserialize)]
@@ -119,6 +197,13 @@ pub struct ProxyQuery {
 async fn handle_proxy(
     Query(query): Query<ProxyQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    if !is_safe_url(&query.url).await {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Proxy URL is unsafe or resolves to a private/loopback address".to_string(),
+        ));
+    }
+
     let client = reqwest::Client::builder()
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         .danger_accept_invalid_certs(true)
@@ -151,6 +236,14 @@ async fn handle_proxy(
         .and_then(|h| h.to_str().ok())
         .unwrap_or("application/octet-stream")
         .to_string();
+
+    let content_type_lc = content_type.to_lowercase();
+    if content_type_lc.contains("text/html") || content_type_lc.contains("application/xhtml+xml") {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Proxying HTML content is forbidden to prevent XSS".to_string(),
+        ));
+    }
 
     let body_bytes = resp.bytes().await
         .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Failed to read proxy response: {}", e)))?;
@@ -194,6 +287,7 @@ async fn handle_proxy(
         headers.insert(axum::http::header::CONTENT_TYPE, val);
     }
     headers.insert(axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
+    headers.insert(axum::http::header::X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
 
     let response_status = axum::http::StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::OK);
     Ok((response_status, headers, response_bytes))

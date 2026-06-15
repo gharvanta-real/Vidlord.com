@@ -8,7 +8,7 @@ export default function Footer({ onOpenPrivacy, onOpenTerms }) {
     <footer className="footer">
       <div className="footer-container">
         <div className="footer-left" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <img src="/favicon.png" alt="Logo" style={{ height: "20px", width: "20px", objectFit: "contain" }} />
+          <img src="/logo-navbar.png" alt="Logo" style={{ height: "32px", width: "auto", objectFit: "contain" }} />
           <span className="footer-desc">High-speed video downloader engine</span>
         </div>
         <div className="footer-links">

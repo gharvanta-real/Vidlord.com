@@ -27,7 +27,7 @@ export default function MetadataView({ info, formats, onSelectFormat, onBack }) 
               backgroundColor: "transparent",
               border: "none",
               color: "var(--text-main)",
-              fontSize: "15px",
+              fontSize: "16px",
               fontWeight: 500,
               outline: "none",
               padding: "6px 0",

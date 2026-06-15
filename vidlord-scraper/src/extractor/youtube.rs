@@ -123,7 +123,7 @@ impl Extractor for YoutubeExtractor {
                                         let seconds = (duration_sec % 60.0) as u64;
                                         let duration_str = format!("{:02}:{:02}", minutes, seconds);
 
-                                        let thumbnail_url = format!("https://img.youtube.com/vi/{}/mqdefault.jpg", video_id);
+                                        let thumbnail_url = format!("https://img.youtube.com/vi/{}/maxresdefault.jpg", video_id);
                                         
                                         let info = VideoInfo {
                                             title: data.title.clone(),

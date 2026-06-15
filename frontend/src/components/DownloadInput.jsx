@@ -149,7 +149,7 @@ export default function DownloadInput({ onExtract, isLoading, error, onClearErro
             <p className="di-card-text">Downloads segments concurrently, bypassing standard server-side bandwidth caps.</p>
           </div>
           <div className="di-card">
-            <Sparkles size={24} className="di-card-icon" />
+            <Layers size={24} className="di-card-icon" />
             <h3 className="di-card-header">Lossless Muxing</h3>
             <p className="di-card-text">Audio and video are merged natively using FFmpeg with zero transcoding quality loss.</p>
           </div>
