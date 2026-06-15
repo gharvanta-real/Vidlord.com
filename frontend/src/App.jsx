@@ -62,11 +62,6 @@ export default function App() {
   };
 
   const handleSelectFormat = (format, customTitle) => {
-    setView("downloading");
-    setDownloadStatus("downloading");
-    setDownloadProgress(null);
-    setErrorMsg("");
-
     const uniqueId = Date.now() + "_" + Math.floor(Math.random() * 1000);
     const ext = format.is_audio ? "m4a" : "mp4";
     
@@ -76,6 +71,29 @@ export default function App() {
       .substring(0, 50);
 
     const fileName = `${safeTitle}_${uniqueId}.${ext}`;
+
+    const isDirect = !format.audio_download_url && 
+                     !format.download_url.includes(".m3u8") && 
+                     !format.download_url.includes("surrit.com") && 
+                     !format.download_url.includes("missav");
+
+    if (isDirect) {
+      const directUrl = `${API_BASE}/api/download/direct?url=${encodeURIComponent(format.download_url)}&filename=${encodeURIComponent(fileName)}`;
+      const link = document.createElement("a");
+      link.href = directUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      handleReset();
+      return;
+    }
+
+    setView("downloading");
+    setDownloadStatus("downloading");
+    setDownloadProgress(null);
+    setErrorMsg("");
+
     const outputPath = `./downloads/${fileName}`;
 
     let sseUrl = `${API_BASE}/api/download?url=${encodeURIComponent(format.download_url)}&output_path=${encodeURIComponent(outputPath)}`;

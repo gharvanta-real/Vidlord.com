@@ -347,6 +347,180 @@ async fn handle_proxy(
     Ok((response_status, headers, response_bytes))
 }
 
+#[derive(Deserialize)]
+pub struct DirectDownloadQuery {
+    pub url: String,
+    pub filename: String,
+}
+
+struct AuditStream<S> {
+    inner: S,
+    url: String,
+    filename: String,
+    client_ip: String,
+    bytes_written: u64,
+    content_length: Option<u64>,
+    logged_started: bool,
+    logged_finished: bool,
+}
+
+impl<S> Drop for AuditStream<S> {
+    fn drop(&mut self) {
+        if self.logged_started && !self.logged_finished {
+            // Check if we downloaded all expected bytes
+            let is_completed = if let Some(len) = self.content_length {
+                self.bytes_written >= len
+            } else {
+                // Without content-length, assume success if we forwarded some bytes
+                self.bytes_written > 0
+            };
+
+            if is_completed {
+                log_audit_event(
+                    "completed",
+                    &self.url,
+                    &self.filename,
+                    None,
+                    &self.client_ip,
+                    Some(self.bytes_written),
+                );
+            } else {
+                log_audit_event(
+                    "failed",
+                    &self.url,
+                    &self.filename,
+                    Some("Connection closed prematurely by client"),
+                    &self.client_ip,
+                    None,
+                );
+            }
+        }
+    }
+}
+
+impl<S> futures::Stream for AuditStream<S>
+where
+    S: futures::Stream<Item = Result<axum::body::Bytes, reqwest::Error>> + Unpin,
+{
+    type Item = Result<axum::body::Bytes, reqwest::Error>;
+
+    fn poll_next(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        if !self.logged_started {
+            self.logged_started = true;
+            log_audit_event("started", &self.url, &self.filename, None, &self.client_ip, None);
+        }
+
+        match std::pin::Pin::new(&mut self.inner).poll_next(cx) {
+            std::task::Poll::Ready(Some(Ok(bytes))) => {
+                self.bytes_written += bytes.len() as u64;
+                std::task::Poll::Ready(Some(Ok(bytes)))
+            }
+            std::task::Poll::Ready(Some(Err(e))) => {
+                self.logged_finished = true;
+                let err_str = e.to_string();
+                log_audit_event("failed", &self.url, &self.filename, Some(&err_str), &self.client_ip, None);
+                std::task::Poll::Ready(Some(Err(e)))
+            }
+            std::task::Poll::Ready(None) => {
+                self.logged_finished = true;
+                log_audit_event("completed", &self.url, &self.filename, None, &self.client_ip, Some(self.bytes_written));
+                std::task::Poll::Ready(None)
+            }
+            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
+    }
+}
+
+async fn handle_download_direct(
+    headers: HeaderMap,
+    Query(query): Query<DirectDownloadQuery>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    if !is_safe_url(&query.url).await {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Video URL is unsafe or resolves to a private/loopback address".to_string(),
+        ));
+    }
+
+    let client_ip = headers.get("x-real-ip")
+        .or_else(|| headers.get("x-forwarded-for"))
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("unknown")
+        .to_string();
+
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap_or_default();
+
+    let mut req = client.get(&query.url);
+    if query.url.contains("surrit.com") || query.url.contains("missav") {
+        req = req.header(reqwest::header::REFERER, "https://missav.ws/");
+    } else if query.url.contains("instagram") || query.url.contains("cdninstagram") {
+        req = req.header(reqwest::header::REFERER, "https://www.instagram.com/");
+    } else if query.url.contains("facebook") || query.url.contains("fbcdn") || query.url.contains("fb.watch") {
+        req = req.header(reqwest::header::REFERER, "https://www.facebook.com/");
+    } else if query.url.contains("twitter") || query.url.contains("x.com") {
+        req = req.header(reqwest::header::REFERER, "https://x.com/");
+    } else if query.url.contains("googlevideo.com") || query.url.contains("youtube") {
+        req = req.header(reqwest::header::REFERER, "https://www.youtube.com/");
+    } else if let Ok(parsed) = reqwest::Url::parse(&query.url) {
+        if let Some(host) = parsed.host_str() {
+            req = req.header(reqwest::header::REFERER, format!("{}://{}/", parsed.scheme(), host));
+        }
+    }
+
+    let resp = req.send().await
+        .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Proxy request failed: {}", e)))?;
+
+    let status = resp.status();
+    let content_type = resp.headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("application/octet-stream")
+        .to_string();
+
+    let content_length = resp.headers()
+        .get(reqwest::header::CONTENT_LENGTH)
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.parse::<u64>().ok());
+
+    let raw_stream = resp.bytes_stream();
+    let audit_stream = AuditStream {
+        inner: raw_stream,
+        url: query.url,
+        filename: query.filename.clone(),
+        client_ip,
+        bytes_written: 0,
+        content_length,
+        logged_started: false,
+        logged_finished: false,
+    };
+
+    let body = axum::body::Body::from_stream(audit_stream);
+
+    let mut headers = HeaderMap::new();
+    if let Ok(val) = HeaderValue::from_str(&content_type) {
+        headers.insert(axum::http::header::CONTENT_TYPE, val);
+    }
+    if let Some(len) = content_length {
+        headers.insert(axum::http::header::CONTENT_LENGTH, HeaderValue::from(len));
+    }
+
+    let content_disp = format!("attachment; filename=\"{}\"", query.filename);
+    if let Ok(val) = HeaderValue::from_str(&content_disp) {
+        headers.insert(axum::http::header::CONTENT_DISPOSITION, val);
+    }
+    headers.insert(axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
+
+    let response_status = axum::http::StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::OK);
+    Ok((response_status, headers, body))
+}
+
 fn spawn_cleanup_task() {
     tokio::spawn(async {
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
@@ -388,6 +562,7 @@ pub async fn run_server(port: u16) -> Result<(), Box<dyn std::error::Error>> {
     let app = Router::new()
         .route("/api/extract", post(handle_extract))
         .route("/api/download", get(handle_download))
+        .route("/api/download/direct", get(handle_download_direct))
         .route("/api/proxy", get(handle_proxy))
         .nest_service("/downloads", ServeDir::new("./downloads"))
         .fallback_service(ServeDir::new("frontend/dist"))
