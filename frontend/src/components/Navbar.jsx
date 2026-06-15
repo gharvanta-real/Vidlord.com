@@ -8,7 +8,11 @@ export default function Navbar({ theme, toggleTheme, onOpenPrivacy, onOpenTerms,
       <div className="navbar-container">
         {/* Left: Brand */}
         <div className="navbar-brand" onClick={onNavigateHowTo}>
-          <img src="/logo-navbar.png" alt="Logo" className="navbar-brand-logo" />
+          <img 
+            src={theme === "light" ? "/logo-light.png" : "/logo-dark.png"} 
+            alt="Logo" 
+            className="navbar-brand-logo" 
+          />
         </div>
 
         {/* Center: Navigation Links (Responsive, hidden on mobile) */}

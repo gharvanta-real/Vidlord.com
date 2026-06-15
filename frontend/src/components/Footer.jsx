@@ -1,14 +1,18 @@
 import React from "react";
 import "./Footer.css";
 
-export default function Footer({ onOpenPrivacy, onOpenTerms }) {
+export default function Footer({ theme, onOpenPrivacy, onOpenTerms }) {
   const currentYear = new Date().getFullYear();
 
   return (
     <footer className="footer">
       <div className="footer-container">
         <div className="footer-left" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <img src="/logo-navbar.png" alt="Logo" style={{ height: "32px", width: "auto", objectFit: "contain" }} />
+          <img 
+            src={theme === "light" ? "/logo-light.png" : "/logo-dark.png"} 
+            alt="Logo" 
+            style={{ height: "32px", width: "auto", objectFit: "contain" }} 
+          />
           <span className="footer-desc">High-speed video downloader engine</span>
         </div>
         <div className="footer-links">

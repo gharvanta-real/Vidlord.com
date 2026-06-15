@@ -173,6 +173,7 @@ export default function App() {
         )}
       </main>
       <Footer 
+        theme={theme}
         onOpenPrivacy={() => setActiveModal("privacy")}
         onOpenTerms={() => setActiveModal("terms")}
       />
