@@ -7,8 +7,8 @@ use super::{Extractor, ExtractionResult, VideoInfo, VideoFormat};
 
 const INVIDIOUS_INSTANCES: &[&str] = &[
     "iv.melmac.space",
+    "inv.thepixora.com",
     "invidious.f5.si",
-    "invidious.projectsegfau.lt",
 ];
 
 pub struct YoutubeExtractor {
