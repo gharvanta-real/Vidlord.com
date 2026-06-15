@@ -10,11 +10,14 @@ export default function MetadataView({ info, formats, onSelectFormat, onBack }) 
   const videoFormats = formats.filter(f => !f.is_audio);
   const audioFormats = formats.filter(f => f.is_audio);
 
+  // Use the first video format stream URL as the playable preview, falling back to source_url
+  const previewUrl = videoFormats.length > 0 ? videoFormats[0].download_url : info.source_url;
+
   return (
     <div className="mv-container">
       {/* 1. Header Metadata Card with video player and editable title */}
       <div className="mv-meta-card">
-        <VideoPlayer url={info.source_url} poster={info.thumbnail_url} />
+        <VideoPlayer url={previewUrl} poster={info.thumbnail_url} />
         <div className="mv-meta-details">
           <input
             type="text"
