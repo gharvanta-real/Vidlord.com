@@ -128,6 +128,14 @@ async fn handle_proxy(
     let mut req = client.get(&query.url);
     if query.url.contains("surrit.com") || query.url.contains("missav") {
         req = req.header(reqwest::header::REFERER, "https://missav.ws/");
+    } else if query.url.contains("instagram") || query.url.contains("cdninstagram") {
+        req = req.header(reqwest::header::REFERER, "https://www.instagram.com/");
+    } else if query.url.contains("facebook") || query.url.contains("fbcdn") || query.url.contains("fb.watch") {
+        req = req.header(reqwest::header::REFERER, "https://www.facebook.com/");
+    } else if query.url.contains("twitter") || query.url.contains("x.com") {
+        req = req.header(reqwest::header::REFERER, "https://x.com/");
+    } else if query.url.contains("googlevideo.com") || query.url.contains("youtube") {
+        req = req.header(reqwest::header::REFERER, "https://www.youtube.com/");
     } else if let Ok(parsed) = reqwest::Url::parse(&query.url) {
         if let Some(host) = parsed.host_str() {
             req = req.header(reqwest::header::REFERER, format!("{}://{}/", parsed.scheme(), host));

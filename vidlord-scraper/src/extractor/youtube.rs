@@ -40,6 +40,21 @@ impl YoutubeExtractor {
         let mb = bytes / (1024.0 * 1024.0);
         (mb * 10.0).round() / 10.0 // 1 decimal place
     }
+
+    fn proxy_url(&self, url: &str, instance: &str) -> String {
+        if url.starts_with('/') {
+            format!("https://{}{}", instance, url)
+        } else if url.contains("googlevideo.com") {
+            if let Ok(mut parsed) = reqwest::Url::parse(url) {
+                let _ = parsed.set_host(Some(instance));
+                parsed.to_string()
+            } else {
+                url.to_string()
+            }
+        } else {
+            url.to_string()
+        }
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -121,7 +136,7 @@ impl Extractor for YoutubeExtractor {
                                         let mut formats = Vec::new();
 
                                         // Find best compatible AAC audio stream for muxing
-                                        let best_audio_url = if let Some(ref adaptive) = data.adaptive_formats {
+                                        let raw_best_audio_url = if let Some(ref adaptive) = data.adaptive_formats {
                                             adaptive.iter()
                                                 .filter(|f| {
                                                     let t = f.format_type.as_ref().map(|s| s.as_str()).unwrap_or("");
@@ -133,7 +148,7 @@ impl Extractor for YoutubeExtractor {
                                             None
                                         };
 
-                                        let best_audio_size_mb = if let Some(ref audio_url) = best_audio_url {
+                                        let best_audio_size_mb = if let Some(ref audio_url) = raw_best_audio_url {
                                             if let Some(ref adaptive) = data.adaptive_formats {
                                                 adaptive.iter()
                                                     .find(|f| f.url == *audio_url)
@@ -156,6 +171,8 @@ impl Extractor for YoutubeExtractor {
                                             0.0
                                         };
 
+                                        let best_audio_url = raw_best_audio_url.map(|u| self.proxy_url(&u, instance));
+
                                         // 1. Map standard video streams (progressive: video + audio)
                                         if let Some(streams) = data.format_streams {
                                             for s in streams {
@@ -176,7 +193,7 @@ impl Extractor for YoutubeExtractor {
                                                 formats.push(VideoFormat {
                                                     quality: format!("{} ({})", label, container),
                                                     size_mb,
-                                                    download_url: s.url,
+                                                    download_url: self.proxy_url(&s.url, instance),
                                                     is_audio: false,
                                                     audio_download_url: None,
                                                 });
@@ -209,7 +226,7 @@ impl Extractor for YoutubeExtractor {
                                                 formats.push(VideoFormat {
                                                     quality: format!("{} (mp4, HD Muxed)", label),
                                                     size_mb: combined_size,
-                                                    download_url: s.url.clone(),
+                                                    download_url: self.proxy_url(&s.url, instance),
                                                     is_audio: false,
                                                     audio_download_url: best_audio_url.clone(),
                                                 });
@@ -242,7 +259,7 @@ impl Extractor for YoutubeExtractor {
                                                 formats.push(VideoFormat {
                                                     quality: format!("Audio Only ({} - {})", container, kbps_str),
                                                     size_mb,
-                                                    download_url: s.url.clone(),
+                                                    download_url: self.proxy_url(&s.url, instance),
                                                     is_audio: true,
                                                     audio_download_url: None,
                                                 });

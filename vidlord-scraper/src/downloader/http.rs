@@ -29,6 +29,14 @@ impl Downloader for HttpDownloader {
         // Determine referer for probe and chunks
         let referer_val = if url.contains("surrit.com") || url.contains("missav") {
             Some("https://missav.ws/".to_string())
+        } else if url.contains("instagram") || url.contains("cdninstagram") {
+            Some("https://www.instagram.com/".to_string())
+        } else if url.contains("facebook") || url.contains("fbcdn") || url.contains("fb.watch") {
+            Some("https://www.facebook.com/".to_string())
+        } else if url.contains("twitter") || url.contains("x.com") {
+            Some("https://x.com/".to_string())
+        } else if url.contains("googlevideo.com") || url.contains("youtube") {
+            Some("https://www.youtube.com/".to_string())
         } else if let Ok(parsed_url) = reqwest::Url::parse(url) {
             if let Some(host) = parsed_url.host_str() {
                 Some(format!("{}://{}/", parsed_url.scheme(), host))
