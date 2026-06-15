@@ -135,7 +135,7 @@ impl Extractor for YoutubeExtractor {
 
                                         let mut formats = Vec::new();
 
-                                        // Find best compatible AAC audio stream for muxing
+                                        // Find best compatible AAC audio stream for muxing & Audio Only download
                                         let raw_best_audio_url = if let Some(ref adaptive) = data.adaptive_formats {
                                             adaptive.iter()
                                                 .filter(|f| {
@@ -173,34 +173,51 @@ impl Extractor for YoutubeExtractor {
 
                                         let best_audio_url = raw_best_audio_url.map(|u| self.proxy_url(&u, instance));
 
-                                        // 1. Map standard video streams (progressive: video + audio)
+                                        // 1. Map standard video streams (progressive: video + audio) - ONLY 720p or 1080p
                                         if let Some(streams) = data.format_streams {
                                             for s in streams {
                                                 let label = s.quality_label.unwrap_or_else(|| "360p".to_string());
-                                                let container = s.container.unwrap_or_else(|| "mp4".to_string());
-                                                
-                                                let bitrate = s.bitrate.and_then(|b| b.parse::<f64>().ok()).unwrap_or(0.0);
-                                                let clen = s.clen.and_then(|c| c.parse::<f64>().ok()).unwrap_or(0.0);
-                                                
-                                                let size_mb = if clen > 0.0 {
-                                                    ((clen / (1024.0 * 1024.0)) * 10.0).round() / 10.0
-                                                } else if bitrate > 0.0 {
-                                                    self.estimate_size_mb(bitrate, duration_sec)
-                                                } else {
-                                                    if label.contains("720") { 64.3 } else if label.contains("1080") { 120.5 } else { 18.6 }
-                                                };
+                                                if label.contains("720") {
+                                                    let bitrate = s.bitrate.and_then(|b| b.parse::<f64>().ok()).unwrap_or(0.0);
+                                                    let clen = s.clen.and_then(|c| c.parse::<f64>().ok()).unwrap_or(0.0);
+                                                    let size_mb = if clen > 0.0 {
+                                                        ((clen / (1024.0 * 1024.0)) * 10.0).round() / 10.0
+                                                    } else if bitrate > 0.0 {
+                                                        self.estimate_size_mb(bitrate, duration_sec)
+                                                    } else {
+                                                        64.3
+                                                    };
 
-                                                formats.push(VideoFormat {
-                                                    quality: format!("{} ({})", label, container),
-                                                    size_mb,
-                                                    download_url: self.proxy_url(&s.url, instance),
-                                                    is_audio: false,
-                                                    audio_download_url: None,
-                                                });
+                                                    formats.push(VideoFormat {
+                                                        quality: "720p (mp4) (Good Quality)".to_string(),
+                                                        size_mb,
+                                                        download_url: self.proxy_url(&s.url, instance),
+                                                        is_audio: false,
+                                                        audio_download_url: None,
+                                                    });
+                                                } else if label.contains("1080") {
+                                                    let bitrate = s.bitrate.and_then(|b| b.parse::<f64>().ok()).unwrap_or(0.0);
+                                                    let clen = s.clen.and_then(|c| c.parse::<f64>().ok()).unwrap_or(0.0);
+                                                    let size_mb = if clen > 0.0 {
+                                                        ((clen / (1024.0 * 1024.0)) * 10.0).round() / 10.0
+                                                    } else if bitrate > 0.0 {
+                                                        self.estimate_size_mb(bitrate, duration_sec)
+                                                    } else {
+                                                        120.5
+                                                    };
+
+                                                    formats.push(VideoFormat {
+                                                        quality: "1080p (mp4) (Full HD)".to_string(),
+                                                        size_mb,
+                                                        download_url: self.proxy_url(&s.url, instance),
+                                                        is_audio: false,
+                                                        audio_download_url: None,
+                                                    });
+                                                }
                                             }
                                         }
 
-                                        // 2. Map adaptive video-only streams (e.g. 1080p H.264 for native muxing)
+                                        // 2. Map adaptive video-only streams (e.g. 1080p H.264 for native muxing) - ONLY 720p or 1080p
                                         if let Some(ref adaptive) = data.adaptive_formats {
                                             for s in adaptive {
                                                 let format_type = s.format_type.as_ref().map(|t| t.as_str()).unwrap_or("");
@@ -209,68 +226,66 @@ impl Extractor for YoutubeExtractor {
                                                 }
 
                                                 let label = s.quality_label.clone().unwrap_or_else(|| "1080p".to_string());
-                                                let clen = s.clen.as_ref().and_then(|c| c.parse::<f64>().ok()).unwrap_or(0.0);
-                                                let bitrate = s.bitrate.as_ref().and_then(|b| b.parse::<f64>().ok()).unwrap_or(0.0);
-                                                
-                                                let size_mb = if clen > 0.0 {
-                                                    ((clen / (1024.0 * 1024.0)) * 10.0).round() / 10.0
-                                                } else if bitrate > 0.0 {
-                                                    self.estimate_size_mb(bitrate, duration_sec)
-                                                } else {
-                                                    45.2
-                                                };
+                                                if label.contains("720") {
+                                                    let clen = s.clen.as_ref().and_then(|c| c.parse::<f64>().ok()).unwrap_or(0.0);
+                                                    let bitrate = s.bitrate.as_ref().and_then(|b| b.parse::<f64>().ok()).unwrap_or(0.0);
+                                                    let size_mb = if clen > 0.0 {
+                                                        ((clen / (1024.0 * 1024.0)) * 10.0).round() / 10.0
+                                                    } else if bitrate > 0.0 {
+                                                        self.estimate_size_mb(bitrate, duration_sec)
+                                                    } else {
+                                                        64.3
+                                                    };
 
-                                                // Combined size video + audio
-                                                let combined_size = (size_mb + best_audio_size_mb * 10.0).round() / 10.0;
+                                                    let combined_size = (size_mb + best_audio_size_mb * 10.0).round() / 10.0;
 
-                                                formats.push(VideoFormat {
-                                                    quality: format!("{} (mp4, HD Muxed)", label),
-                                                    size_mb: combined_size,
-                                                    download_url: self.proxy_url(&s.url, instance),
-                                                    is_audio: false,
-                                                    audio_download_url: best_audio_url.clone(),
-                                                });
+                                                    formats.push(VideoFormat {
+                                                        quality: "720p (mp4, HD Muxed) (Good Quality)".to_string(),
+                                                        size_mb: combined_size,
+                                                        download_url: self.proxy_url(&s.url, instance),
+                                                        is_audio: false,
+                                                        audio_download_url: best_audio_url.clone(),
+                                                    });
+                                                } else if label.contains("1080") {
+                                                    let clen = s.clen.as_ref().and_then(|c| c.parse::<f64>().ok()).unwrap_or(0.0);
+                                                    let bitrate = s.bitrate.as_ref().and_then(|b| b.parse::<f64>().ok()).unwrap_or(0.0);
+                                                    let size_mb = if clen > 0.0 {
+                                                        ((clen / (1024.0 * 1024.0)) * 10.0).round() / 10.0
+                                                    } else if bitrate > 0.0 {
+                                                        self.estimate_size_mb(bitrate, duration_sec)
+                                                    } else {
+                                                        120.5
+                                                    };
+
+                                                    let combined_size = (size_mb + best_audio_size_mb * 10.0).round() / 10.0;
+
+                                                    formats.push(VideoFormat {
+                                                        quality: "1080p (mp4, HD Muxed) (Full HD)".to_string(),
+                                                        size_mb: combined_size,
+                                                        download_url: self.proxy_url(&s.url, instance),
+                                                        is_audio: false,
+                                                        audio_download_url: best_audio_url.clone(),
+                                                    });
+                                                }
                                             }
                                         }
 
-                                        // 3. Map adaptive audio-only streams
-                                        if let Some(adaptive) = data.adaptive_formats {
-                                            for s in &adaptive {
-                                                let format_type = s.format_type.as_ref().map(|t| t.as_str()).unwrap_or("");
-                                                if !format_type.starts_with("audio/") {
-                                                    continue;
-                                                }
-
-                                                let container = s.container.clone().unwrap_or_else(|| "m4a".to_string());
-                                                let bitrate = s.bitrate.as_ref().and_then(|b| b.parse::<f64>().ok()).unwrap_or(0.0);
-                                                let clen = s.clen.as_ref().and_then(|c| c.parse::<f64>().ok()).unwrap_or(0.0);
-                                                
-                                                let size_mb = if clen > 0.0 {
-                                                    ((clen / (1024.0 * 1024.0)) * 10.0).round() / 10.0
-                                                } else if bitrate > 0.0 {
-                                                    self.estimate_size_mb(bitrate, duration_sec)
-                                                } else {
-                                                    3.4
-                                                };
-
-                                                let kbps = (bitrate / 1000.0).round() as u64;
-                                                let kbps_str = if kbps > 0 { format!("{}kbps", kbps) } else { "128kbps".to_string() };
-
-                                                formats.push(VideoFormat {
-                                                    quality: format!("Audio Only ({} - {})", container, kbps_str),
-                                                    size_mb,
-                                                    download_url: self.proxy_url(&s.url, instance),
-                                                    is_audio: true,
-                                                    audio_download_url: None,
-                                                });
-                                            }
+                                        // 3. Map single best audio stream as "Audio Only (m4a) (Music)"
+                                        if let Some(ref audio_url) = best_audio_url {
+                                            formats.push(VideoFormat {
+                                                quality: "Audio Only (m4a) (Music)".to_string(),
+                                                size_mb: best_audio_size_mb,
+                                                download_url: audio_url.clone(),
+                                                is_audio: true,
+                                                audio_download_url: None,
+                                            });
                                         }
 
                                         // Fallback if no streams mapped
                                         if formats.is_empty() {
                                             formats.push(VideoFormat {
-                                                quality: "360p (mp4)".to_string(),
-                                                size_mb: 18.6,
+                                                quality: "720p (mp4, HD Muxed) (Good Quality)".to_string(),
+                                                size_mb: 64.3,
                                                 download_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4".to_string(),
                                                 is_audio: false,
                                                 audio_download_url: None,
