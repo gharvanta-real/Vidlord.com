@@ -6,8 +6,8 @@ use crate::errors::ScraperError;
 use super::{Extractor, ExtractionResult, VideoInfo, VideoFormat};
 
 const INVIDIOUS_INSTANCES: &[&str] = &[
-    "iv.melmac.space",
     "inv.thepixora.com",
+    "iv.melmac.space",
     "invidious.f5.si",
 ];
 
@@ -42,11 +42,16 @@ impl YoutubeExtractor {
     }
 
     fn proxy_url(&self, url: &str, instance: &str) -> String {
+        let proxy_host = if instance == "iv.melmac.space" || instance == "invidious.f5.si" {
+            "inv.thepixora.com"
+        } else {
+            instance
+        };
         if url.starts_with('/') {
-            format!("https://{}{}", instance, url)
+            format!("https://{}{}", proxy_host, url)
         } else if url.contains("googlevideo.com") {
             if let Ok(mut parsed) = reqwest::Url::parse(url) {
-                let _ = parsed.set_host(Some(instance));
+                let _ = parsed.set_host(Some(proxy_host));
                 parsed.to_string()
             } else {
                 url.to_string()
