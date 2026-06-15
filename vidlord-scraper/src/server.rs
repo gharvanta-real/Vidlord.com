@@ -117,6 +117,7 @@ fn log_audit_event(
     file_name: &str,
     error: Option<&str>,
     client_ip: &str,
+    size: Option<u64>,
 ) {
     let log_file_path = "./downloads_audit.jsonl";
     let timestamp = chrono::Utc::now().to_rfc3339();
@@ -128,6 +129,7 @@ fn log_audit_event(
         "filename": file_name,
         "client_ip": client_ip,
         "error": error,
+        "size": size,
     });
     
     let log_line = format!("{}\n", log_entry.to_string());
@@ -176,13 +178,14 @@ async fn handle_download(
         .unwrap_or("unknown")
         .to_string();
 
-    log_audit_event("started", &query.url, &file_name, None, &client_ip);
+    log_audit_event("started", &query.url, &file_name, None, &client_ip, None);
 
     let (tx, rx) = mpsc::channel(100);
 
     let url_clone = query.url.clone();
     let file_name_clone = file_name.clone();
     let client_ip_clone = client_ip.clone();
+    let safe_output_path_clone = safe_output_path.clone();
 
     // Spawn download asynchronously in the background
     tokio::spawn(async move {
@@ -218,12 +221,15 @@ async fn handle_download(
         let audio_url_ref = query.audio_url.as_deref();
         match download_stream(&query.url, audio_url_ref, &safe_output_path, progress_cb).await {
             Ok(()) => {
-                log_audit_event("completed", &url_clone, &file_name_clone, None, &client_ip_clone);
+                let size = std::fs::metadata(&safe_output_path_clone)
+                    .map(|m| m.len())
+                    .ok();
+                log_audit_event("completed", &url_clone, &file_name_clone, None, &client_ip_clone, size);
                 let _ = tx.send(ProgressMessage::Completed).await;
             }
             Err(e) => {
                 let err_str = e.to_string();
-                log_audit_event("failed", &url_clone, &file_name_clone, Some(&err_str), &client_ip_clone);
+                log_audit_event("failed", &url_clone, &file_name_clone, Some(&err_str), &client_ip_clone, None);
                 let _ = tx.send(ProgressMessage::Error { message: err_str }).await;
             }
         }
