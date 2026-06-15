@@ -6,9 +6,31 @@ export default function VideoPlayer({ url, poster }) {
 
   useEffect(() => {
     let hls = null;
+    let player = null;
     let isDestroyed = false;
 
-    const initPlayer = (HlsClass) => {
+    // Load Plyr CSS and JS dynamically
+    const loadPlyr = () => {
+      if (!document.getElementById("plyr-css")) {
+        const link = document.createElement("link");
+        link.id = "plyr-css";
+        link.rel = "stylesheet";
+        link.href = "https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css";
+        document.head.appendChild(link);
+      }
+
+      if (window.Plyr) {
+        initPlayer(window.Hls, window.Plyr);
+      } else {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js";
+        script.async = true;
+        script.onload = () => initPlayer(window.Hls, window.Plyr);
+        document.body.appendChild(script);
+      }
+    };
+
+    const initPlayer = (HlsClass, PlyrClass) => {
       if (isDestroyed || !videoRef.current) return;
       const video = videoRef.current;
       
@@ -20,39 +42,56 @@ export default function VideoPlayer({ url, poster }) {
           hls = new HlsClass();
           hls.loadSource(proxyUrl);
           hls.attachMedia(video);
+          
+          hls.on(HlsClass.Events.MANIFEST_PARSED, () => {
+            if (PlyrClass && !player) {
+              player = new PlyrClass(video, {
+                controls: [
+                  'play-large', 'play', 'progress', 'current-time', 
+                  'mute', 'volume', 'settings', 'pip', 'fullscreen'
+                ],
+                settings: ['quality', 'speed', 'loop'],
+                tooltips: { controls: true, seek: true }
+              });
+            }
+          });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = proxyUrl;
+          if (PlyrClass) {
+            player = new PlyrClass(video);
+          }
         } else {
           setLoadError(true);
         }
       } else {
         video.src = proxyUrl;
+        if (PlyrClass) {
+          player = new PlyrClass(video);
+        }
       }
     };
 
+    // Load Hls.js dynamically first
     if (url.includes(".m3u8") || url.includes("m3u8")) {
       if (window.Hls) {
-        initPlayer(window.Hls);
+        loadPlyr();
       } else {
         const script = document.createElement("script");
         script.src = "https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js";
         script.async = true;
-        script.onload = () => {
-          if (window.Hls) {
-            initPlayer(window.Hls);
-          }
-        };
-        script.onerror = () => {
-          setLoadError(true);
-        };
+        script.onload = loadPlyr;
+        script.onerror = () => setLoadError(true);
         document.body.appendChild(script);
       }
     } else {
-      initPlayer(null);
+      loadPlyr();
     }
 
     return () => {
       isDestroyed = true;
+      if (player) {
+        player.destroy();
+      }
       if (hls) {
         hls.destroy();
       }
@@ -66,7 +105,6 @@ export default function VideoPlayer({ url, poster }) {
       ) : (
         <video
           ref={videoRef}
-          controls
           playsInline
           poster={poster}
           style={styles.video}
@@ -79,7 +117,6 @@ export default function VideoPlayer({ url, poster }) {
 const styles = {
   playerContainer: {
     width: "100%",
-    aspectRatio: "16/9",
     borderRadius: "14px",
     overflow: "hidden",
     backgroundColor: "#000",
@@ -88,13 +125,10 @@ const styles = {
   video: {
     width: "100%",
     height: "100%",
-    objectFit: "contain",
   },
   errorText: {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
+    padding: "40px",
+    textAlign: "center",
     color: "var(--text-muted)",
     fontSize: "14px",
   },
