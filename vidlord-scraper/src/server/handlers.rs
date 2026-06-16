@@ -27,6 +27,9 @@ pub struct DownloadQuery {
     pub url: String,
     pub output_path: String,
     pub audio_url: Option<String>,
+    pub video_page_url: Option<String>,
+    pub quality: Option<String>,
+    pub is_audio: Option<bool>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -220,7 +223,52 @@ pub async fn handle_download(
         };
 
         let audio_url_ref = query.audio_url.as_deref();
-        match download_stream(&query.url, audio_url_ref, &safe_output_path_clone, progress_cb).await {
+        let mut download_result = download_stream(&query.url, audio_url_ref, &safe_output_path_clone, progress_cb.clone()).await;
+
+        if download_result.is_err() {
+            if let Some(ref page_url) = query.video_page_url {
+                let _ = tx.try_send(ProgressMessage::Downloading {
+                    stage: "re-extracting".to_string(),
+                    current: 0.0,
+                    total: 0.0,
+                    percentage: 0.0,
+                });
+                println!("Download failed. Attempting re-extraction from page: {}", page_url);
+                if let Ok(new_extraction) = extract_video_details(page_url).await {
+                    let target_quality = query.quality.as_deref().unwrap_or("");
+                    let target_is_audio = query.is_audio.unwrap_or(false);
+                    let mut matched_format = None;
+
+                    for f in &new_extraction.formats {
+                        if f.is_audio == target_is_audio {
+                            if target_quality.is_empty() || f.quality == target_quality {
+                                matched_format = Some(f.clone());
+                                break;
+                            }
+                        }
+                    }
+
+                    if matched_format.is_none() && !new_extraction.formats.is_empty() {
+                        matched_format = new_extraction.formats.iter().find(|f| f.is_audio == target_is_audio).cloned();
+                    }
+
+                    if let Some(f) = matched_format {
+                        println!("Re-extraction succeeded. Retrying download with new URL: {}", f.download_url);
+                        let _ = std::fs::remove_file(&safe_output_path_clone);
+                        for i in 0..16 {
+                            let _ = std::fs::remove_file(format!("{}.part{}", safe_output_path_clone, i));
+                        }
+                        let _ = std::fs::remove_file(format!("{}.video.tmp", safe_output_path_clone));
+                        let _ = std::fs::remove_file(format!("{}.audio.tmp", safe_output_path_clone));
+                        
+                        let new_audio_url = f.audio_download_url.as_deref();
+                        download_result = download_stream(&f.download_url, new_audio_url, &safe_output_path_clone, progress_cb).await;
+                    }
+                }
+            }
+        }
+
+        match download_result {
             Ok(()) => {
                 completed_clone.store(true, std::sync::atomic::Ordering::SeqCst);
                 let size = std::fs::metadata(&safe_output_path_clone)

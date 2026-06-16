@@ -121,16 +121,55 @@ impl Downloader for HlsDownloader {
             if depth >= 5 {
                 return Err(ScraperError::ExtractionError("Too many nested playlists".to_string()));
             }
-            let mut playlist_req = self.client.get(&current_url);
-            if let Some(ref ref_str) = referer_val {
-                playlist_req = playlist_req.header(reqwest::header::REFERER, ref_str);
-            }
-            let resp = playlist_req.send().await
-                .map_err(|e| ScraperError::NetworkError(format!("Playlist fetch failed: {}", e)))?;
+            let mut retries = 5;
+            let mut delay_ms = 500;
+            let mut resp = None;
+            let mut attempt = 0;
+            const USER_AGENTS: &[&str] = &[
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2.1 Safari/605.1.15",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0"
+            ];
+
+            while retries > 0 {
+                let ua = USER_AGENTS[attempt % USER_AGENTS.len()];
+                attempt += 1;
                 
-            if resp.status() != 200 {
-                return Err(ScraperError::NetworkError(format!("Server returned HTTP {}", resp.status())));
+                let mut req = self.client.get(&current_url)
+                    .header(reqwest::header::USER_AGENT, ua);
+                if let Some(ref ref_str) = referer_val {
+                    req = req.header(reqwest::header::REFERER, ref_str);
+                }
+                
+                match req.send().await {
+                    Ok(r) => {
+                        let status = r.status();
+                        if status == 200 {
+                            resp = Some(r);
+                            break;
+                        } else {
+                            retries -= 1;
+                            if retries == 0 {
+                                return Err(ScraperError::NetworkError(format!("Server returned HTTP {}", status)));
+                            }
+                            tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                            delay_ms *= 2;
+                        }
+                    }
+                    Err(e) => {
+                        retries -= 1;
+                        if retries == 0 {
+                            return Err(ScraperError::NetworkError(format!("Playlist fetch failed: {}", e)));
+                        }
+                        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                        delay_ms *= 2;
+                    }
+                }
             }
+
+            let resp = resp.unwrap();
 
             let content = resp.text().await
                 .map_err(|e| ScraperError::ExtractionError(format!("Failed to read playlist content: {}", e)))?;

@@ -19,6 +19,119 @@ impl HttpDownloader {
             .unwrap_or_default();
         Self { client }
     }
+
+    async fn download_single_connection_resilient<F>(
+        &self,
+        url: &str,
+        output_path: &str,
+        referer_val: &Option<String>,
+        progress_callback: &F,
+    ) -> Result<(), ScraperError>
+    where
+        F: Fn(f64, f64) + Send + Sync + 'static,
+    {
+        const USER_AGENTS: &[&str] = &[
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2.1 Safari/605.1.15",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0"
+        ];
+
+        let mut file = File::create(output_path)
+            .map_err(|e| ScraperError::IoError(e))?;
+        
+        let mut downloaded = 0.0;
+        let mut total_size = 0.0;
+        
+        let mut retries = 5;
+        let mut delay_ms = 500;
+        let mut attempt = 0;
+
+        while total_size == 0.0 || downloaded < total_size {
+            let ua = USER_AGENTS[attempt % USER_AGENTS.len()];
+            attempt += 1;
+
+            let mut req = self.client.get(url)
+                .header(reqwest::header::USER_AGENT, ua);
+            if let Some(ref ref_str) = referer_val {
+                req = req.header(reqwest::header::REFERER, ref_str);
+            }
+            if downloaded > 0.0 {
+                req = req.header(reqwest::header::RANGE, format!("bytes={:.0}-", downloaded));
+            }
+
+            match req.send().await {
+                Ok(resp) => {
+                    let status = resp.status();
+                    if status.is_success() {
+                        if downloaded == 0.0 {
+                            total_size = resp.content_length().unwrap_or(0) as f64;
+                            if total_size > 3.0 * 1024.0 * 1024.0 * 1024.0 {
+                                return Err(ScraperError::DownloadError("Video size exceeds 3 GB limit".to_string()));
+                            }
+                        } else if status == reqwest::StatusCode::OK {
+                            println!("Server ignored Range header on resume. Resetting download to start.");
+                            downloaded = 0.0;
+                            file = File::create(output_path).map_err(|e| ScraperError::IoError(e))?;
+                        }
+
+                        let mut stream = resp.bytes_stream();
+                        let mut stream_failed = false;
+
+                        while let Some(chunk_result) = stream.next().await {
+                            match chunk_result {
+                                Ok(chunk) => {
+                                    file.write_all(&chunk).map_err(|e| ScraperError::IoError(e))?;
+                                    downloaded += chunk.len() as f64;
+                                    
+                                    if downloaded > 3.0 * 1024.0 * 1024.0 * 1024.0 {
+                                        return Err(ScraperError::DownloadError("Video size exceeds 3 GB limit".to_string()));
+                                    }
+
+                                    if total_size > 0.0 {
+                                        progress_callback(downloaded, total_size);
+                                    } else {
+                                        progress_callback(downloaded, downloaded);
+                                    }
+                                }
+                                Err(e) => {
+                                    println!("Stream read error mid-download: {}. Will attempt to resume...", e);
+                                    stream_failed = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if !stream_failed {
+                            break;
+                        }
+                    } else {
+                        println!("Download resume request returned HTTP status: {}. Retries left: {}", status, retries - 1);
+                    }
+                    
+                    retries -= 1;
+                    if retries == 0 {
+                        return Err(ScraperError::DownloadError("Download failed after multiple stream interruptions".to_string()));
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                    delay_ms *= 2;
+                }
+                Err(e) => {
+                    retries -= 1;
+                    if retries == 0 {
+                        return Err(ScraperError::NetworkError(format!("HTTP request failed: {}", e)));
+                    }
+                    println!("HTTP request failed: {}. Retrying in {}ms...", e, delay_ms);
+                    tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                    delay_ms *= 2;
+                }
+            }
+        }
+
+        file.flush().map_err(|e| ScraperError::IoError(e))?;
+        Ok(())
+    }
 }
 
 impl Downloader for HttpDownloader {
@@ -118,7 +231,7 @@ impl Downloader for HttpDownloader {
             let chunk_size = content_length / num_chunks;
             let mut tasks = Vec::new();
             let downloaded_bytes = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
-            let progress_callback = std::sync::Arc::new(progress_callback);
+            let progress_callback_arc = std::sync::Arc::new(progress_callback);
 
             // Clean up any stale part files from previous aborted runs to prevent corruption
             for i in 0..num_chunks {
@@ -137,7 +250,7 @@ impl Downloader for HttpDownloader {
                 let url = url.to_string();
                 let part_path = format!("{}.part{}", output_path, i);
                 let downloaded_bytes = downloaded_bytes.clone();
-                let progress_callback = progress_callback.clone();
+                let progress_callback_task = progress_callback_arc.clone();
 
                 let referer_clone = referer_val.clone();
                 let task = tokio::spawn(async move {
@@ -151,7 +264,6 @@ impl Downloader for HttpDownloader {
                             break;
                         }
 
-                        // Open file in append/write mode
                         let mut file = if std::path::Path::new(&part_file_path).exists() {
                             std::fs::OpenOptions::new().write(true).append(true).open(&part_file_path)
                         } else {
@@ -179,7 +291,7 @@ impl Downloader for HttpDownloader {
                                             downloaded_in_segment += chunk_len;
                                             
                                             let total_so_far = downloaded_bytes.fetch_add(chunk_len, std::sync::atomic::Ordering::SeqCst) + chunk_len;
-                                            progress_callback(total_so_far as f64, content_length as f64);
+                                            progress_callback_task(total_so_far as f64, content_length as f64);
                                         }
                                         Err(_) => {
                                             failed = true;
@@ -189,14 +301,11 @@ impl Downloader for HttpDownloader {
                                 }
 
                                 if !failed {
-                                    // Segment fully downloaded!
                                     break;
                                 }
                             }
                             Ok(resp) => {
-                                // HTTP failure status
                                 if resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
-                                    // Rate limited, sleep longer
                                     tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
                                 }
                             }
@@ -207,7 +316,6 @@ impl Downloader for HttpDownloader {
                         if retries == 0 {
                             return Err(ScraperError::DownloadError("Segment download failed after multiple retries".to_string()));
                         }
-                        // Sleep for a short moment before retrying
                         tokio::time::sleep(std::time::Duration::from_millis(800)).await;
                     }
 
@@ -219,86 +327,59 @@ impl Downloader for HttpDownloader {
             // Wait for all tasks to complete
             let results = futures::future::join_all(tasks).await;
             let mut part_paths = Vec::new();
+            let mut segmented_failed = false;
+            let mut last_error = None;
+
             for res in results {
                 match res {
                     Ok(Ok(path)) => part_paths.push(path),
                     Ok(Err(e)) => {
-                        // Cleanup temporary parts on error
-                        for i in 0..num_chunks {
-                            let _ = std::fs::remove_file(format!("{}.part{}", output_path, i));
-                        }
-                        return Err(e);
+                        last_error = Some(e);
+                        segmented_failed = true;
+                        break;
                     }
                     Err(e) => {
-                        // Task join error
-                        for i in 0..num_chunks {
-                            let _ = std::fs::remove_file(format!("{}.part{}", output_path, i));
-                        }
-                        return Err(ScraperError::DownloadError(format!("Task join failed: {}", e)));
+                        last_error = Some(ScraperError::DownloadError(format!("Task join failed: {}", e)));
+                        segmented_failed = true;
+                        break;
                     }
                 }
             }
 
-            // Concatenate all parts sequentially into the final file
-            let mut final_file = File::create(output_path)
-                .map_err(|e| ScraperError::IoError(e))?;
-
-            for part_path in &part_paths {
-                let mut part_file = File::open(part_path)
+            if segmented_failed {
+                println!(
+                    "Segmented download failed: {:?}. Falling back to single-connection resilient downloader.",
+                    last_error
+                );
+                // Cleanup temporary parts
+                for i in 0..num_chunks {
+                    let _ = std::fs::remove_file(format!("{}.part{}", output_path, i));
+                }
+                let progress_ref = progress_callback_arc.as_ref();
+                self.download_single_connection_resilient(url, output_path, &referer_val, progress_ref).await
+            } else {
+                // Concatenate all parts sequentially into the final file
+                let mut final_file = File::create(output_path)
                     .map_err(|e| ScraperError::IoError(e))?;
-                std::io::copy(&mut part_file, &mut final_file)
-                    .map_err(|e| ScraperError::IoError(e))?;
-            }
-            final_file.flush().map_err(|e| ScraperError::IoError(e))?;
 
-            // Delete temporary parts
-            for part_path in part_paths {
-                let _ = std::fs::remove_file(part_path);
-            }
+                for part_path in &part_paths {
+                    let mut part_file = File::open(part_path)
+                        .map_err(|e| ScraperError::IoError(e))?;
+                    std::io::copy(&mut part_file, &mut final_file)
+                        .map_err(|e| ScraperError::IoError(e))?;
+                }
+                final_file.flush().map_err(|e| ScraperError::IoError(e))?;
 
-            Ok(())
+                // Delete temporary parts
+                for part_path in part_paths {
+                    let _ = std::fs::remove_file(part_path);
+                }
+
+                Ok(())
+            }
         } else {
-            // 3. Fallback to standard single-connection download
-            let mut req = self.client.get(url);
-            if let Some(ref ref_str) = referer_val {
-                req = req.header(reqwest::header::REFERER, ref_str);
-            }
-            let resp = req.send().await
-                .map_err(|e| ScraperError::NetworkError(format!("HTTP request failed: {}", e)))?;
-
-            if !resp.status().is_success() {
-                return Err(ScraperError::NetworkError(format!("Server returned HTTP {}", resp.status())));
-            }
-
-            let total_size = resp.content_length().unwrap_or(0) as f64;
-            if total_size > 3.0 * 1024.0 * 1024.0 * 1024.0 {
-                return Err(ScraperError::DownloadError("Video size exceeds 3 GB limit".to_string()));
-            }
-            let mut file = File::create(output_path)
-                .map_err(|e| ScraperError::IoError(e))?;
-            
-            let mut downloaded = 0.0;
-            let mut stream = resp.bytes_stream();
-
-            while let Some(chunk_result) = stream.next().await {
-                let chunk = chunk_result.map_err(|e| ScraperError::DownloadError(format!("Chunk download failed: {}", e)))?;
-                file.write_all(&chunk)
-                    .map_err(|e| ScraperError::IoError(e))?;
-                downloaded += chunk.len() as f64;
-                
-                if downloaded > 3.0 * 1024.0 * 1024.0 * 1024.0 {
-                    return Err(ScraperError::DownloadError("Video size exceeds 3 GB limit".to_string()));
-                }
-                
-                if total_size > 0.0 {
-                    progress_callback(downloaded, total_size);
-                } else {
-                    progress_callback(downloaded, downloaded);
-                }
-            }
-
-            file.flush().map_err(|e| ScraperError::IoError(e))?;
-            Ok(())
+            // 3. Fallback to standard single-connection download with retry & User-Agent rotation
+            self.download_single_connection_resilient(url, output_path, &referer_val, &progress_callback).await
         }
     }
 }

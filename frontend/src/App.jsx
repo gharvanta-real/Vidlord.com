@@ -833,6 +833,15 @@ export default function App() {
       const outputPath = `./downloads/${fileName}`;
       let sseUrl = `${API_BASE}/api/download?url=${encodeURIComponent(format.download_url)}&output_path=${encodeURIComponent(outputPath)}`;
       sseUrl += `&audio_url=${encodeURIComponent(format.audio_download_url)}`;
+      if (videoData && videoData.info && videoData.info.source_url) {
+        sseUrl += `&video_page_url=${encodeURIComponent(videoData.info.source_url)}`;
+      }
+      if (format.quality) {
+        sseUrl += `&quality=${encodeURIComponent(format.quality)}`;
+      }
+      if (format.is_audio !== undefined) {
+        sseUrl += `&is_audio=${format.is_audio}`;
+      }
 
       const eventSource = new EventSource(sseUrl);
       activeEventSource.current = eventSource;
