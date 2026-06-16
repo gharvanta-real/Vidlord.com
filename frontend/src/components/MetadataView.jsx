@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Play, Music, Video } from "lucide-react";
+import { PlayIcon, MusicNote01Icon, Video01Icon } from "hugeicons-react";
 import VideoPlayer from "./VideoPlayer";
+import NetworkAdBanner from "./NetworkAdBanner";
 import "./MetadataView.css";
 
 export default function MetadataView({ info, formats, onSelectFormat, onBack }) {
@@ -68,7 +69,7 @@ export default function MetadataView({ info, formats, onSelectFormat, onBack }) 
                 className="mv-format-row"
               >
                 <div className="mv-format-info">
-                  <Video size={18} className="mv-format-icon" />
+                  <Video01Icon size={18} className="mv-format-icon" />
                   <span className="mv-quality">{f.quality}</span>
                 </div>
                 <span className="mv-size">{f.size_mb > 0 ? `${f.size_mb} MB` : ""}</span>
@@ -81,7 +82,7 @@ export default function MetadataView({ info, formats, onSelectFormat, onBack }) 
                 className="mv-format-row"
               >
                 <div className="mv-format-info">
-                  <Music size={18} className="mv-format-icon" />
+                  <MusicNote01Icon size={18} className="mv-format-icon" />
                   <span className="mv-quality">{f.quality}</span>
                 </div>
                 <span className="mv-size">{f.size_mb > 0 ? `${f.size_mb} MB` : ""}</span>
@@ -94,13 +95,8 @@ export default function MetadataView({ info, formats, onSelectFormat, onBack }) 
         Cancel
       </button>
 
-      {/* Privacy-First Sponsor Banner */}
-      <div className="mv-ad-banner">
-        <div className="mv-ad-tag">Sponsored</div>
-        <p className="mv-ad-text">
-          Support Vidlord: Get high-performance cloud servers from Hostlord starting at $2/mo.
-        </p>
-      </div>
+      {/* Ad Network Display Banner */}
+      <NetworkAdBanner format="300x250" />
     </div>
   );
 }

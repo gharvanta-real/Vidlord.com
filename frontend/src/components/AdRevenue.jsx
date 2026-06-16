@@ -1,5 +1,5 @@
 import React from "react";
-import { DollarSign, ShieldAlert, Award } from "lucide-react";
+import { Dollar01Icon, AlertCircleIcon, Award01Icon } from "hugeicons-react";
 import "./AdRevenue.css";
 
 export default function AdRevenue() {
@@ -12,7 +12,7 @@ export default function AdRevenue() {
 
       <div className="ar-grid">
         <div className="ar-card">
-          <ShieldAlert size={24} className="ar-icon" />
+          <AlertCircleIcon size={24} className="ar-icon" />
           <h3 className="ar-card-header">Privacy-First Ads</h3>
           <p className="ar-card-text">
             We do not use cookie-tracking ad networks. All promotions are static, self-hosted image ads with zero user profile tracking.
@@ -20,7 +20,7 @@ export default function AdRevenue() {
         </div>
 
         <div className="ar-card">
-          <Award size={24} className="ar-icon" />
+          <Award01Icon size={24} className="ar-icon" />
           <h3 className="ar-card-header">Sponsor Chips</h3>
           <p className="ar-card-text">
             Partners can buy elegant logo chips in the supported section. A clean, borderless placement that respects the website layout.
@@ -28,7 +28,7 @@ export default function AdRevenue() {
         </div>
 
         <div className="ar-card">
-          <DollarSign size={24} className="ar-icon" />
+          <Dollar01Icon size={24} className="ar-icon" />
           <h3 className="ar-card-header">Speed Boosts</h3>
           <p className="ar-card-text">
             Watch a voluntary 5-second sponsored segment to unlock maximum download bandwidth (up to 100+ Mbps parallel threads).

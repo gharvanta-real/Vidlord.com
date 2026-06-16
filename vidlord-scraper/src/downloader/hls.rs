@@ -43,6 +43,51 @@ impl HlsDownloader {
             Ok(resolved.to_string())
         }
     }
+
+    fn get_media_playlist_url(&self, body: &str, base_url: &str) -> Option<String> {
+        if !body.contains("#EXT-X-STREAM-INF") {
+            return None;
+        }
+
+        let mut streams = Vec::new();
+        let mut current_stream_inf = None;
+
+        for line in body.lines() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            if trimmed.starts_with("#EXT-X-STREAM-INF:") {
+                current_stream_inf = Some(trimmed.to_string());
+            } else if !trimmed.starts_with('#') {
+                if let Some(inf) = current_stream_inf.take() {
+                    streams.push((inf, trimmed.to_string()));
+                }
+            }
+        }
+
+        if streams.is_empty() {
+            return None;
+        }
+
+        let mut best_url = streams[0].1.clone();
+        let mut max_bandwidth = 0u64;
+
+        for (inf, url) in streams {
+            if let Some(bw_idx) = inf.find("BANDWIDTH=") {
+                let rest = &inf[bw_idx + 10..];
+                let end_idx = rest.find(',').unwrap_or(rest.len());
+                if let Ok(bw) = rest[..end_idx].parse::<u64>() {
+                    if bw > max_bandwidth {
+                        max_bandwidth = bw;
+                        best_url = url;
+                    }
+                }
+            }
+        }
+
+        self.resolve_url(base_url, &best_url).ok()
+    }
 }
 
 impl Downloader for HlsDownloader {
@@ -53,6 +98,10 @@ impl Downloader for HlsDownloader {
         // Determine referer for playlist and segments
         let referer_val = if playlist_url.contains("surrit.com") || playlist_url.contains("missav") {
             Some("https://missav.ws/".to_string())
+        } else if playlist_url.contains("wowstream") {
+            Some("https://wowstream.cloud/".to_string())
+        } else if playlist_url.contains("javhd.com") || playlist_url.contains("javhd.today") || playlist_url.contains("javhd") || playlist_url.contains("index-v1-a1.txt") || playlist_url.contains("master.txt") || playlist_url.contains("hls3") || playlist_url.contains("4flhlv") {
+            Some("https://4flhlv.com/".to_string())
         } else if let Ok(parsed_url) = reqwest::Url::parse(playlist_url) {
             if let Some(host) = parsed_url.host_str() {
                 Some(format!("{}://{}/", parsed_url.scheme(), host))
@@ -63,20 +112,37 @@ impl Downloader for HlsDownloader {
             None
         };
 
-        // 1. Fetch playlist
-        let mut playlist_req = self.client.get(playlist_url);
-        if let Some(ref ref_str) = referer_val {
-            playlist_req = playlist_req.header(reqwest::header::REFERER, ref_str);
-        }
-        let resp = playlist_req.send().await
-            .map_err(|e| ScraperError::NetworkError(format!("Playlist fetch failed: {}", e)))?;
-            
-        if resp.status() != 200 {
-            return Err(ScraperError::NetworkError(format!("Server returned HTTP {}", resp.status())));
-        }
+        // 1. Fetch playlist (recursively resolve Master Playlists to Media Playlists)
+        let mut current_url = playlist_url.to_string();
+        let mut body = String::new();
+        let mut depth = 0;
 
-        let body = resp.text().await
-            .map_err(|e| ScraperError::ExtractionError(format!("Failed to read playlist content: {}", e)))?;
+        loop {
+            if depth >= 5 {
+                return Err(ScraperError::ExtractionError("Too many nested playlists".to_string()));
+            }
+            let mut playlist_req = self.client.get(&current_url);
+            if let Some(ref ref_str) = referer_val {
+                playlist_req = playlist_req.header(reqwest::header::REFERER, ref_str);
+            }
+            let resp = playlist_req.send().await
+                .map_err(|e| ScraperError::NetworkError(format!("Playlist fetch failed: {}", e)))?;
+                
+            if resp.status() != 200 {
+                return Err(ScraperError::NetworkError(format!("Server returned HTTP {}", resp.status())));
+            }
+
+            let content = resp.text().await
+                .map_err(|e| ScraperError::ExtractionError(format!("Failed to read playlist content: {}", e)))?;
+
+            if let Some(sub_url) = self.get_media_playlist_url(&content, &current_url) {
+                current_url = sub_url;
+                depth += 1;
+            } else {
+                body = content;
+                break;
+            }
+        }
 
         // 2. Parse segments
         let raw_segments = self.parse_m3u8(&body);
@@ -86,7 +152,7 @@ impl Downloader for HlsDownloader {
 
         let mut segments = Vec::new();
         for s in raw_segments {
-            segments.push(self.resolve_url(playlist_url, &s)?);
+            segments.push(self.resolve_url(&current_url, &s)?);
         }
 
         let total_segments = segments.len();

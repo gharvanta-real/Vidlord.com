@@ -71,7 +71,16 @@ async fn download_single_stream<F>(url: &str, output_path: &str, progress_callba
 where
     F: Fn(f64, f64) + Send + Sync + 'static,
 {
-    if url.contains(".m3u8") || url.contains("m3u8") {
+    let lower = url.to_lowercase();
+    let is_hls = lower.contains(".m3u8") 
+        || lower.contains("m3u8") 
+        || lower.contains(".txt") 
+        || lower.contains("master.txt") 
+        || lower.contains("-v1-a1.txt") 
+        || lower.contains("hls3") 
+        || lower.contains("4flhlv");
+
+    if is_hls {
         let downloader = hls::HlsDownloader::new(8);
         downloader.download(url, output_path, progress_callback).await
     } else {

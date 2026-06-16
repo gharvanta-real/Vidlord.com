@@ -1,1 +1,7 @@
 /target
+/admin_config.json
+/downloads
+/downloads_audit.jsonl
+/ads_clicks.jsonl
+/scratch
+/*.mp4

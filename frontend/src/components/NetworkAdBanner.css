@@ -1,0 +1,91 @@
+.nab-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 24px auto;
+  width: 100%;
+}
+
+.nab-loading-skeleton {
+  width: 100%;
+  max-width: 728px;
+  height: 90px;
+  background: var(--bg-input);
+  border-radius: var(--radius-ios-btn);
+  animation: pulse 1.8s infinite ease-in-out;
+  margin: 24px auto;
+}
+
+/* Glassmorphism Placeholder styling */
+.nab-placeholder {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin: 24px auto;
+  border: 1px dashed var(--bg-active);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-ios-btn);
+  color: var(--text-muted);
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.nab-placeholder:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--accent-color);
+}
+
+.format-728x90 {
+  max-width: 728px;
+  height: 90px;
+}
+
+.format-468x60 {
+  max-width: 468px;
+  height: 60px;
+}
+
+.format-300x250 {
+  max-width: 300px;
+  height: 250px;
+}
+
+.nab-tag {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--accent-color);
+  letter-spacing: 1.5px;
+  background: rgba(0, 122, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.nab-dimensions {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.nab-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}

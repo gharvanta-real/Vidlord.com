@@ -50,3 +50,6 @@ frontend/dist/
 *.pem
 *.tar.gz
 *.zip
+frontend/public/*.mp4
+icons/
+start.py

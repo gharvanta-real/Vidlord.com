@@ -1,0 +1,70 @@
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(28, 28, 30, 0.85); /* Apple-like translucent dark mode */
+  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 999;
+  padding-top: 4px;
+  padding-bottom: calc(0.3 * env(safe-area-inset-bottom, 0px) + 6px); /* Handle notch properly on both iPhone/Android */
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s;
+}
+
+[data-theme="light"] .bottom-nav {
+  background-color: rgba(255, 255, 255, 0.85);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.05);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex: 1;
+  gap: 2px;
+  transition: color 0.2s ease, transform 0.1s ease;
+  font-size: 10px;
+  font-weight: 500;
+  -webkit-tap-highlight-color: transparent;
+  padding: 2px 0;
+}
+
+.bottom-nav-item svg {
+  color: inherit;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.bottom-nav-item:active svg {
+  transform: scale(0.88);
+}
+
+.bottom-nav-item.active {
+  color: var(--color-primary);
+}
+
+.bottom-nav-item.active svg {
+  transform: scale(1.05);
+}
+
+.bottom-nav-action-btn {
+  color: var(--color-accent);
+}
+
+/* Hide bottom navigation on desktop viewports */
+@media (min-width: 601px) {
+  .bottom-nav {
+    display: none !important;
+  }
+}

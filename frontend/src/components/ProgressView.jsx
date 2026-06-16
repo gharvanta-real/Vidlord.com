@@ -1,5 +1,5 @@
 import React from "react";
-import { Download, RefreshCw, AlertCircle } from "lucide-react";
+import { Download01Icon, Refresh01Icon, AlertCircleIcon } from "hugeicons-react";
 import "./ProgressView.css";
 
 export default function ProgressView({ progress, status, downloadUrl, error, onReset }) {
@@ -63,7 +63,7 @@ export default function ProgressView({ progress, status, downloadUrl, error, onR
         {/* Error icon */}
         {isError && (
           <div className="pv-error-icon-wrapper">
-            <AlertCircle size={40} className="pv-error-icon" />
+            <AlertCircleIcon size={40} className="pv-error-icon" />
           </div>
         )}
       </div>
@@ -71,12 +71,33 @@ export default function ProgressView({ progress, status, downloadUrl, error, onR
       {/* Action Buttons */}
       <div className="pv-actions">
         {isCompleted && downloadUrl && (
-          <a href={downloadUrl} download className="pv-download-link">
-            <button className="pv-download-btn">
-              <Download size={20} />
-              Save to Device
-            </button>
-          </a>
+          downloadUrl === "streamed" ? (
+            <div 
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '12px 24px',
+                backgroundColor: '#10b981',
+                color: '#ffffff',
+                borderRadius: '12px',
+                fontWeight: '600',
+                fontSize: '15px',
+                width: '100%',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
+              }}
+            >
+              Saved directly to Downloads!
+            </div>
+          ) : (
+            <a href={downloadUrl} download className="pv-download-link">
+              <button className="pv-download-btn">
+                <Download01Icon size={20} />
+                Save to Device
+              </button>
+            </a>
+          )
         )}
 
         {(isDownloading || isMuxing) && (
@@ -87,7 +108,7 @@ export default function ProgressView({ progress, status, downloadUrl, error, onR
 
         {(isCompleted || isError) && (
           <button onClick={onReset} className="pv-reset-btn">
-            <RefreshCw size={18} />
+            <Refresh01Icon size={18} />
             Download Another
           </button>
         )}

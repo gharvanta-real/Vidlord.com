@@ -1,5 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 
+const API_BASE = import.meta.env.DEV 
+  ? `http://${window.location.hostname}:8080` 
+  : "";
+
 export default function VideoPlayer({ url, poster }) {
   const videoRef = useRef(null);
   const [loadError, setLoadError] = useState(false);
@@ -51,8 +55,25 @@ export default function VideoPlayer({ url, poster }) {
       if (isDestroyed || !videoRef.current) return;
       const video = videoRef.current;
       
-      const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
-      const isM3u8 = url.includes(".m3u8") || url.includes("m3u8");
+      const proxyUrl = `${API_BASE}/api/proxy?url=${encodeURIComponent(url)}`;
+      const lowerUrl = url.toLowerCase();
+      const isM3u8 = lowerUrl.includes(".m3u8") 
+        || lowerUrl.includes("m3u8") 
+        || lowerUrl.includes(".txt") 
+        || lowerUrl.includes("master.txt") 
+        || lowerUrl.includes("-v1-a1.txt")
+        || lowerUrl.includes("hls3")
+        || lowerUrl.includes("4flhlv");
+
+      const plyrOptions = {
+        controls: [
+          'play-large', 'play', 'progress', 'current-time', 
+          'mute', 'volume', 'settings', 'pip', 'fullscreen'
+        ],
+        settings: ['quality', 'speed', 'loop'],
+        tooltips: { controls: true, seek: true },
+        fullscreen: { enabled: true, fallback: true, iosNative: true }
+      };
 
       if (isM3u8) {
         if (HlsClass && HlsClass.isSupported()) {
@@ -62,20 +83,13 @@ export default function VideoPlayer({ url, poster }) {
           
           hls.on(HlsClass.Events.MANIFEST_PARSED, () => {
             if (PlyrClass && !player) {
-              player = new PlyrClass(video, {
-                controls: [
-                  'play-large', 'play', 'progress', 'current-time', 
-                  'mute', 'volume', 'settings', 'pip', 'fullscreen'
-                ],
-                settings: ['quality', 'speed', 'loop'],
-                tooltips: { controls: true, seek: true }
-              });
+              player = new PlyrClass(video, plyrOptions);
             }
           });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = proxyUrl;
           if (PlyrClass) {
-            player = new PlyrClass(video);
+            player = new PlyrClass(video, plyrOptions);
           }
         } else {
           setLoadError(true);
@@ -83,13 +97,22 @@ export default function VideoPlayer({ url, poster }) {
       } else {
         video.src = proxyUrl;
         if (PlyrClass) {
-          player = new PlyrClass(video);
+          player = new PlyrClass(video, plyrOptions);
         }
       }
     };
 
     // Load Hls.js dynamically first
-    if (url.includes(".m3u8") || url.includes("m3u8")) {
+    const lowerUrl = url.toLowerCase();
+    const isM3u8 = lowerUrl.includes(".m3u8") 
+      || lowerUrl.includes("m3u8") 
+      || lowerUrl.includes(".txt") 
+      || lowerUrl.includes("master.txt") 
+      || lowerUrl.includes("-v1-a1.txt")
+      || lowerUrl.includes("hls3")
+      || lowerUrl.includes("4flhlv");
+
+    if (isM3u8) {
       if (window.Hls) {
         loadPlyr();
       } else {
@@ -122,7 +145,9 @@ export default function VideoPlayer({ url, poster }) {
       ) : (
         <video
           ref={videoRef}
+          controls
           playsInline
+          webkit-playsinline="true"
           poster={posterUrl}
           style={styles.video}
         />
@@ -134,14 +159,20 @@ export default function VideoPlayer({ url, poster }) {
 const styles = {
   playerContainer: {
     width: "100%",
+    maxHeight: "480px",
     borderRadius: "14px",
     overflow: "hidden",
     backgroundColor: "#000",
     position: "relative",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   video: {
     width: "100%",
     height: "100%",
+    maxHeight: "480px",
+    objectFit: "contain",
   },
   errorText: {
     padding: "40px",

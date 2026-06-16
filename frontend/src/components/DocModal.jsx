@@ -1,5 +1,5 @@
 import React from "react";
-import { X } from "lucide-react";
+import { Cancel01Icon } from "hugeicons-react";
 import "./DocModal.css";
 
 export default function DocModal({ type, onClose }) {
@@ -13,7 +13,7 @@ export default function DocModal({ type, onClose }) {
         <div className="dm-header">
           <h3 className="dm-title">{title}</h3>
           <button onClick={onClose} className="dm-close-btn" aria-label="Close modal">
-            <X size={20} />
+            <Cancel01Icon size={20} />
           </button>
         </div>
         <div className="dm-content">

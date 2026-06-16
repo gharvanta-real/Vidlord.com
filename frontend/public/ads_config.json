@@ -1,0 +1,20 @@
+[
+  {
+    "badge": "SPONSORED SECURITY",
+    "link": "https://nordvpn.com",
+    "image": "/nordvpn_banner.png",
+    "accent": "#4682b4"
+  },
+  {
+    "badge": "SPONSORED PRIVACY",
+    "link": "https://proton.me",
+    "image": "/protonmail_banner.png",
+    "accent": "#7b68ee"
+  },
+  {
+    "badge": "SPONSORED NODE",
+    "link": "https://aws.amazon.com/lightsail/",
+    "image": "/felbic_banner.png",
+    "accent": "#00fa9a"
+  }
+]

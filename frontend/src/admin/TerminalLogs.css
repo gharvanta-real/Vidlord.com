@@ -1,0 +1,219 @@
+/* Terminal Logs Tab Dashboard Styles */
+
+.terminal-tabs-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--nav-border);
+  padding-bottom: 12px;
+}
+
+.terminal-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.terminal-tab-btn:hover {
+  background-color: var(--bg-input);
+  color: var(--text-main);
+}
+
+.terminal-tab-btn.active {
+  background-color: var(--bg-active);
+  color: var(--color-primary);
+  border-color: rgba(255, 82, 0, 0.2);
+}
+
+/* Tab viewport */
+.terminal-viewport-wrapper {
+  background-color: transparent;
+}
+
+.logs-tab-content {
+  animation: tabFadeIn 0.2s ease-out forwards;
+}
+
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scraper Sandbox Tester Layout */
+.terminal-tester-panel {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .terminal-tester-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tester-form-col {
+  background-color: var(--bg-surface);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-tester-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.terminal-tester-input {
+  background-color: var(--bg-input);
+  color: var(--text-main);
+  border: 1px solid var(--nav-border);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.terminal-tester-input:focus {
+  border-color: var(--color-primary);
+}
+
+/* Console Screens (Developer black box style) */
+.terminal-console-screen,
+.console-screen-dark {
+  background-color: #0b0b0d;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  height: 320px;
+}
+
+.console-header {
+  background-color: #16161a;
+  height: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.console-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.console-dot.red { background-color: #ff5f56; }
+.console-dot.yellow { background-color: #ffbd2e; }
+.console-dot.green { background-color: #27c93f; }
+
+.console-title {
+  color: #86868b;
+  font-size: 11px;
+  font-family: Consolas, monospace;
+  margin-left: 12px;
+}
+
+.console-body {
+  padding: 16px;
+  overflow-y: auto;
+  font-family: Consolas, Monaco, "Lucida Console", Courier, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #e4e4e7;
+  flex-grow: 1;
+  text-align: left;
+}
+
+.console-line {
+  margin-bottom: 6px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.console-line.success { color: #4ade80; }
+.console-line.error { color: #f87171; }
+
+.console-placeholder {
+  color: #71717a;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-style: italic;
+  font-size: 12.5px;
+}
+
+.console-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 12px;
+  background-color: #4ade80;
+  margin-left: 4px;
+  animation: blink 0.8s infinite;
+  vertical-align: middle;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* PM2 Logs Panel Layout */
+.pm2-logs-panel {
+  background-color: var(--bg-surface);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pm2-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pm2-console {
+  height: 360px;
+}
+
+.pm2-log-line {
+  margin-bottom: 6px;
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.pm2-timestamp {
+  color: #3b82f6;
+  margin-right: 8px;
+  font-weight: 600;
+}
+
+.pm2-text {
+  color: #e4e4e7;
+}
+
+.loading-indicator {
+  color: #a1a1aa;
+  font-style: italic;
+  margin-top: 8px;
+}

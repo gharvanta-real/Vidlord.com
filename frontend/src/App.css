@@ -43,7 +43,7 @@
 }
 
 .nav-link {
-  color: var(--text-muted);
+  color: var(--nav-text-muted);
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
@@ -51,7 +51,7 @@
 }
 
 .nav-link:hover {
-  color: var(--text-main);
+  color: var(--nav-text);
 }
 
 @keyframes pulse {

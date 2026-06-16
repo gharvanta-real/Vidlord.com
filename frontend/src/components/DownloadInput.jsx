@@ -1,8 +1,10 @@
-import React, { useState } from "react";
-import { ArrowRight, Clipboard, Shield, Zap, Sparkles, FileVideo, Layers, Globe } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { ArrowRight01Icon, ClipboardIcon, Shield01Icon, FlashIcon, SparklesIcon, FileVideoIcon, Layers01Icon, GlobeIcon, Download01Icon } from "hugeicons-react";
 import Steps from "./Steps";
 import Faq from "./Faq";
 import AdRevenue from "./AdRevenue";
+import SponsorCard from "./SponsorCard";
+import NetworkAdBanner from "./NetworkAdBanner";
 import "./DownloadInput.css";
 
 const YoutubeIcon = (props) => (
@@ -17,8 +19,118 @@ const VimeoIcon = (props) => (
   </svg>
 );
 
-export default function DownloadInput({ onExtract, isLoading, error, onClearError }) {
+const InstagramIcon = (props) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+  </svg>
+);
+
+const TikTokIcon = (props) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" {...props}>
+    <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.02 1.59 4.23.97 1.2 2.27 2.05 3.71 2.44v3.9c-1.97-.07-3.83-.95-5.14-2.42-.09.13-.19.26-.29.39-.08 3.51.02 7.02-.1 10.52-.28 2.39-1.54 4.58-3.48 5.76-2.18 1.34-5.01 1.52-7.34.46C2.26 23.77.72 21.05.6 18.23c-.26-3.8 2.37-7.44 6.16-8.27 1.23-.28 2.51-.18 3.68.27v4.06c-1.1-.65-2.52-.69-3.66.08-1.22.8-1.83 2.32-1.5 3.75.3 1.37 1.53 2.45 2.94 2.51 1.66.11 3.16-1.01 3.42-2.65.17-1.02.1-2.07.11-3.11-.02-5.06-.01-10.13-.02-15.2z" />
+  </svg>
+);
+
+const XIcon = (props) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" {...props}>
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+
+const FacebookIcon = (props) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" {...props}>
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+  </svg>
+);
+
+// History actions SVG Icons
+const CopyIcon = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+  </svg>
+);
+
+const RefreshIcon = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+  </svg>
+);
+
+export default function DownloadInput({ 
+  onExtract, 
+  isLoading, 
+  error, 
+  onClearError,
+  title,
+  subtitle,
+  placeholder,
+  navigate,
+  currentPath,
+  adCount,
+  onAdClick,
+  steps,
+  faqs,
+  bannerEnabled,
+  bannerScript
+}) {
   const [url, setUrl] = useState("");
+  const [detectedUrl, setDetectedUrl] = useState("");
+  const [showClipboardBanner, setShowClipboardBanner] = useState(false);
+  const checkClipboard = async () => {
+    if (!navigator.clipboard || !navigator.clipboard.readText) return;
+    try {
+      if (document.hasFocus()) {
+        const text = await navigator.clipboard.readText();
+        const cleanText = text.trim();
+        
+        const isValid = 
+          cleanText.includes("youtube.com/") ||
+          cleanText.includes("youtu.be/") ||
+          cleanText.includes("instagram.com/") ||
+          cleanText.includes("tiktok.com/") ||
+          cleanText.includes("twitter.com/") ||
+          cleanText.includes("x.com/") ||
+          cleanText.includes("facebook.com/") ||
+          cleanText.includes("fb.watch/") ||
+          cleanText.includes("vimeo.com/");
+          
+        if (isValid && cleanText !== url) {
+          setDetectedUrl(cleanText);
+          setShowClipboardBanner(true);
+        } else {
+          setShowClipboardBanner(false);
+        }
+      }
+    } catch (err) {
+      // Permission prompt fail is safe to ignore
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener("focus", checkClipboard);
+    const timer = setTimeout(checkClipboard, 800);
+    
+    return () => {
+      window.removeEventListener("focus", checkClipboard);
+      clearTimeout(timer);
+    };
+  }, [url]);
+
+  const handleAcceptClipboard = () => {
+    setUrl(detectedUrl);
+    setShowClipboardBanner(false);
+    onExtract(detectedUrl);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -40,42 +152,87 @@ export default function DownloadInput({ onExtract, isLoading, error, onClearErro
     <div className="di-container">
       {/* 1. Hero Title & Subtitle */}
       <div className="di-hero">
-        <h1 className="di-hero-title">Universal Video Downloader</h1>
-        <p className="di-hero-subtitle">
-          Download high-quality video and audio streams from YouTube and other platforms instantly
-        </p>
+        <h1 className="di-hero-title">{title}</h1>
+        <p className="di-hero-subtitle">{subtitle}</p>
       </div>
 
       {/* 2. Main Download Bar */}
-      <form onSubmit={handleSubmit} className="di-form">
-        <div className="di-input-wrapper">
-          <input
-            type="url"
-            placeholder="Paste video URL here..."
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            className="di-input"
-            disabled={isLoading}
-            required
-          />
-          <button 
-            type="button" 
-            onClick={handlePaste} 
-            className="di-paste-btn"
-            title="Paste from clipboard"
-          >
-            <Clipboard size={18} className="di-paste-icon" />
-          </button>
+      <div className="di-form-wrapper">
+        <div className="di-split-bg">
+          <div className="di-hero-artifacts"></div>
         </div>
-        <button 
-          type="submit" 
-          className="di-download-btn" 
-          disabled={isLoading || !url.trim()}
-        >
-          <span>Download</span>
-          <ArrowRight size={18} />
-        </button>
-      </form>
+        <form onSubmit={handleSubmit} className="di-form">
+          <div className="di-input-wrapper">
+            <input
+              type="url"
+              placeholder={placeholder}
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className="di-input"
+              disabled={isLoading}
+              required
+            />
+            <button 
+              type="button" 
+              onClick={handlePaste} 
+              className="di-paste-btn"
+              title="Paste from clipboard"
+            >
+              <ClipboardIcon size={18} className="di-paste-icon" />
+            </button>
+            <button 
+              type="submit" 
+              className="di-integrated-download-btn" 
+              disabled={isLoading || !url.trim()}
+              title="Download"
+            >
+              <Download01Icon size={18} />
+            </button>
+          </div>
+          <button 
+            type="submit" 
+            className="di-download-btn" 
+            disabled={isLoading || !url.trim()}
+          >
+            <span>Download</span>
+            <ArrowRight01Icon size={18} />
+          </button>
+        </form>
+      </div>
+
+      {/* Dynamic Sponsor Cards & Banners */}
+      <div className="di-sponsors-ads-wrapper" style={{ margin: "20px auto 0", maxWidth: "600px", width: "100%" }}>
+        <SponsorCard adCount={adCount} onAdClick={onAdClick} />
+        
+        {bannerEnabled && bannerScript && (
+          <div 
+            className="custom-banner-script-container"
+            style={{ marginTop: "15px", display: "flex", justifyContent: "center" }}
+            ref={(el) => {
+              if (el) {
+                el.innerHTML = "";
+                const range = document.createRange();
+                const frag = range.createContextualFragment(bannerScript);
+                el.appendChild(frag);
+              }
+            }}
+          />
+        )}
+      </div>
+
+      {/* Clipboard Auto-Detect Toast Banner */}
+      {showClipboardBanner && detectedUrl && (
+        <div className="di-clipboard-toast" onClick={handleAcceptClipboard}>
+          <div className="di-toast-glow"></div>
+          <div className="di-toast-content">
+            <span className="di-toast-sparkle">✨</span>
+            <span className="di-toast-text">
+              Link in Clipboard: <strong>{detectedUrl.substring(0, 32)}...</strong>
+            </span>
+            <button className="di-toast-action-btn">Tap to Paste & Download</button>
+          </div>
+        </div>
+      )}
 
       {/* 3. Slider Loading Bar */}
       {isLoading && (
@@ -110,62 +267,104 @@ export default function DownloadInput({ onExtract, isLoading, error, onClearErro
       {/* 4. Supported Platforms & Formats */}
       <div className="di-platforms">
         <div className="di-platform-grid">
-          <div className="di-platform-item">
-            <YoutubeIcon style={{ color: "var(--text-main)" }} />
+          <div 
+            onClick={() => navigate("/youtube-downloader")} 
+            className={`di-platform-item ${currentPath === "/youtube-downloader" ? "di-active" : ""}`}
+          >
+            <YoutubeIcon />
             <span>YouTube</span>
           </div>
-          <div className="di-platform-item">
-            <VimeoIcon style={{ color: "var(--text-main)" }} />
+          <div 
+            onClick={() => navigate("/youtube-to-mp3")} 
+            className={`di-platform-item ${currentPath === "/youtube-to-mp3" ? "di-active" : ""}`}
+          >
+            <Layers01Icon size={16} />
+            <span>YouTube to MP3</span>
+          </div>
+          <div 
+            onClick={() => navigate("/instagram-downloader")} 
+            className={`di-platform-item ${currentPath === "/instagram-downloader" ? "di-active" : ""}`}
+          >
+            <InstagramIcon />
+            <span>Instagram</span>
+          </div>
+          <div 
+            onClick={() => navigate("/tiktok-video-download")} 
+            className={`di-platform-item ${currentPath === "/tiktok-video-download" ? "di-active" : ""}`}
+          >
+            <TikTokIcon />
+            <span>TikTok</span>
+          </div>
+          <div 
+            onClick={() => navigate("/x-downloader")} 
+            className={`di-platform-item ${currentPath === "/x-downloader" ? "di-active" : ""}`}
+          >
+            <XIcon />
+            <span>X / Twitter</span>
+          </div>
+          <div 
+            onClick={() => navigate("/facebook-downloader")} 
+            className={`di-platform-item ${currentPath === "/facebook-downloader" ? "di-active" : ""}`}
+          >
+            <FacebookIcon />
+            <span>Facebook</span>
+          </div>
+          <div 
+            onClick={() => navigate("/vimeo-downloader")} 
+            className={`di-platform-item ${currentPath === "/vimeo-downloader" ? "di-active" : ""}`}
+          >
+            <VimeoIcon />
             <span>Vimeo</span>
-          </div>
-          <div className="di-platform-item">
-            <FileVideo size={16} style={{ color: "var(--text-main)" }} />
-            <span>Direct MP4</span>
-          </div>
-          <div className="di-platform-item">
-            <Layers size={16} style={{ color: "var(--text-main)" }} />
-            <span>HLS (.m3u8)</span>
-          </div>
-          <div className="di-platform-item">
-            <Globe size={16} style={{ color: "var(--text-main)" }} />
-            <span>Generic Stream</span>
           </div>
         </div>
       </div>
 
+
       {/* 5. How To Steps Section */}
-      <Steps />
+      <div className="di-desktop-only-section">
+        <Steps steps={steps} />
+      </div>
 
       {/* 6. Features Section (Below the fold) */}
-      <div className="di-features">
+      <div className="di-features di-desktop-only-section">
         <h2 className="di-features-title">Why Use Vidlord?</h2>
         <p className="di-features-desc">
           A lightweight, high-performance tool built for low-spec systems and fast download requirements.
         </p>
         <div className="di-grid">
           <div className="di-card">
-            <Zap size={24} className="di-card-icon" />
-            <h3 className="di-card-header">16x Speed</h3>
+            <div className="di-card-header-row">
+              <h3 className="di-card-header">16x Speed</h3>
+              <FlashIcon size={24} className="di-card-icon" />
+            </div>
             <p className="di-card-text">Downloads segments concurrently, bypassing standard server-side bandwidth caps.</p>
           </div>
           <div className="di-card">
-            <Layers size={24} className="di-card-icon" />
-            <h3 className="di-card-header">Lossless Muxing</h3>
+            <div className="di-card-header-row">
+              <h3 className="di-card-header">Lossless Muxing</h3>
+              <Layers01Icon size={24} className="di-card-icon" />
+            </div>
             <p className="di-card-text">Audio and video are merged natively using FFmpeg with zero transcoding quality loss.</p>
           </div>
           <div className="di-card">
-            <Shield size={24} className="di-card-icon" />
-            <h3 className="di-card-header">100% Free</h3>
+            <div className="di-card-header-row">
+              <h3 className="di-card-header">100% Free</h3>
+              <Shield01Icon size={24} className="di-card-icon" />
+            </div>
             <p className="di-card-text">No registration, no limits, and no tracking cookies. Runs completely on your own server.</p>
           </div>
         </div>
       </div>
 
       {/* 7. FAQ Section */}
-      <Faq />
+      <div className="di-desktop-only-section">
+        <Faq faqs={faqs} />
+      </div>
 
       {/* 8. Ad Revenue Model Section */}
-      <AdRevenue />
+      <div className="di-desktop-only-section">
+        <AdRevenue />
+      </div>
     </div>
   );
 }

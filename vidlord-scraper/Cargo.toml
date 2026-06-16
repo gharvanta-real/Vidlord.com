@@ -19,6 +19,10 @@ crossterm = "0.27"
 mp4 = "0.14"
 urlencoding = "2.1"
 chrono = "0.4"
+bcrypt = "0.15"
+totp-rs = { version = "5.5", features = ["otpauth"] }
+rand = "0.8"
+
 
 [dev-dependencies]
 tempfile = "3.10"

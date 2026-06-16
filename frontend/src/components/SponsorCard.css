@@ -1,0 +1,61 @@
+.sc-wrapper {
+  width: 100%;
+  max-width: 850px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  padding: 0 4px;
+}
+
+.sc-badge {
+  color: var(--sponsor-accent);
+}
+
+.sc-views-left {
+  color: var(--text-muted);
+}
+
+.sc-banner-link {
+  display: block;
+  width: 100%;
+  border-radius: var(--radius-ios-btn);
+  overflow: hidden;
+  border: 1px solid var(--bg-input);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  line-height: 0;
+}
+
+.sc-banner-link:hover {
+  border-color: var(--sponsor-accent);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.02), 0 0 8px var(--sponsor-accent);
+}
+
+.sc-banner-img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 8 / 1;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.sc-banner-link:hover .sc-banner-img {
+  transform: scale(1.005);
+}
+
+/* Mobile responsive layout */
+@media (max-width: 680px) {
+  .sc-banner-img {
+    aspect-ratio: 4.5 / 1; /* Make it slightly taller on mobile for better text visibility */
+  }
+}

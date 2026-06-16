@@ -3,6 +3,7 @@ use crate::errors::ScraperError;
 
 pub mod youtube;
 pub mod generic;
+pub mod instagram;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct VideoInfo {
@@ -37,10 +38,13 @@ pub trait Extractor: Send + Sync {
 /// Helper to parse and route a URL to the correct extractor.
 pub async fn extract_video_details(url: &str) -> Result<ExtractionResult, ScraperError> {
     let youtube_extractor = youtube::YoutubeExtractor::new();
+    let instagram_extractor = instagram::InstagramExtractor::new();
     let generic_extractor = generic::GenericExtractor::new();
 
     if youtube_extractor.can_handle(url) {
         youtube_extractor.extract(url).await
+    } else if instagram_extractor.can_handle(url) {
+        instagram_extractor.extract(url).await
     } else if generic_extractor.can_handle(url) {
         generic_extractor.extract(url).await
     } else {

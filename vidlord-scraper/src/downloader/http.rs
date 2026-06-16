@@ -26,9 +26,12 @@ impl Downloader for HttpDownloader {
     where
         F: Fn(f64, f64) + Send + Sync + 'static,
     {
-        // Determine referer for probe and chunks
         let referer_val = if url.contains("surrit.com") || url.contains("missav") {
             Some("https://missav.ws/".to_string())
+        } else if url.contains("wowstream") {
+            Some("https://wowstream.cloud/".to_string())
+        } else if url.contains("javhd.com") || url.contains("javhd.today") || url.contains("javhd") || url.contains("index-v1-a1.txt") || url.contains("master.txt") || url.contains("hls3") || url.contains("4flhlv") {
+            Some("https://4flhlv.com/".to_string())
         } else if url.contains("instagram") || url.contains("cdninstagram") {
             Some("https://www.instagram.com/".to_string())
         } else if url.contains("facebook") || url.contains("fbcdn") || url.contains("fb.watch") {
