@@ -69,7 +69,8 @@ impl Downloader for HttpDownloader {
             || url.contains("invidious") 
             || url.contains("melmac.space") 
             || url.contains("projectsegfau.lt")
-            || url.contains("yewtu.be");
+            || url.contains("yewtu.be")
+            || (url.contains("/videoplayback") && !url.contains("googlevideo.com") && !url.contains("youtube.com"));
 
         if !is_invidious {
             if init_resp.status() == reqwest::StatusCode::PARTIAL_CONTENT {
